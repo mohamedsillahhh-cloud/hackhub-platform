@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -5,8 +6,10 @@ from pydantic import ValidationError
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import text
 
 from app.core.config import settings
+from app.core.database import engine, Base
 from app.api.v1.endpoints import (
     auth,
     events,
@@ -25,10 +28,22 @@ from app.api.v1.endpoints import (
 # Standalone routers (outside events prefix)
 standalone_teams = teams.standalone_router
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if settings.DATABASE_URL.startswith("sqlite"):
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+            result = await conn.execute(text("PRAGMA journal_mode=WAL"))
+            print(f"SQLite journal_mode: {result.scalar()}")
+    yield
+
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description=settings.DESCRIPTION,
+    lifespan=lifespan,
 )
 
 limiter = Limiter(key_func=get_remote_address)

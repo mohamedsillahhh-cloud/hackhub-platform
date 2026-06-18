@@ -1,8 +1,8 @@
 import enum
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Text, DateTime, Enum, ForeignKey, ARRAY, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import String, Text, DateTime, Enum, ForeignKey, JSON, func
+from app.core.types import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
@@ -25,7 +25,7 @@ class Project(Base):
     github_url: Mapped[str] = mapped_column(String(500), nullable=True)
     demo_video_url: Mapped[str] = mapped_column(String(500), nullable=True)
     presentation_url: Mapped[str] = mapped_column(String(500), nullable=True)
-    tech_stack: Mapped[list] = mapped_column(ARRAY(String), nullable=True, default=list)
+    tech_stack: Mapped[list] = mapped_column(JSON, nullable=True, default=list)
     status: Mapped[ProjectStatus] = mapped_column(Enum(ProjectStatus), default=ProjectStatus.DRAFT, nullable=False)
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

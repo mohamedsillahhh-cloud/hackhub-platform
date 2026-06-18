@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     DESCRIPTION: str = "Hackathon Management Platform"
     API_V1_STR: str = "/api/v1"
 
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/hackhub"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./hackhub.db"
     REDIS_URL: str = "redis://localhost:6379/0"
 
     SECRET_KEY: str = "change-this-secret-key-in-production"

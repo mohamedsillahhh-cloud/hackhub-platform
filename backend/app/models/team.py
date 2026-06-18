@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 from sqlalchemy import String, DateTime, Enum, ForeignKey, func
-from sqlalchemy.dialects.postgresql import UUID
+from app.core.types import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
@@ -46,4 +46,4 @@ class TeamMember(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     team = relationship("Team", back_populates="members", lazy="selectin")
-    user = relationship("User", back_populates="teams", lazy="selectin")
+    user = relationship("User", back_populates="teams", lazy="selectin", foreign_keys=[user_id])

@@ -50,3 +50,5 @@ coverage/
 # Uploads
 uploads/
 media/
+
+hackhub.db
