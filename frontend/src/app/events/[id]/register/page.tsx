@@ -2,12 +2,11 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, CheckCircle } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { TeamForm } from '@/components/forms/team-form'
 import { useEvent } from '@/hooks/useEvents'
-import { useTeam } from '@/hooks/useTeams'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreateTeam, useJoinTeam } from '@/hooks/useTeams'
 import { LoadingState } from '@/components/ui/loading-state'
@@ -20,11 +19,11 @@ import type { CreateTeamRequest } from '@/types'
 export default function RegisterForEventPage() {
   const params = useParams()
   const router = useRouter()
-  const id = params.id as string
-  const { user, isAuthenticated } = useAuth()
-  const { data: event, isLoading: eventLoading, error: eventError } = useEvent(id)
-  const createTeam = useCreateTeam()
-  const joinTeam = useJoinTeam()
+  const eventId = params.id as string
+  const { isAuthenticated } = useAuth()
+  const { data: event, isLoading: eventLoading, error: eventError } = useEvent(eventId)
+  const createTeam = useCreateTeam(eventId)
+  const joinTeam = useJoinTeam(eventId)
 
   const [mode, setMode] = useState<'select' | 'create' | 'join'>('create')
   const [inviteCode, setInviteCode] = useState('')
@@ -53,7 +52,7 @@ export default function RegisterForEventPage() {
     try {
       await createTeam.mutateAsync(data)
       toast.success('Team created successfully!')
-      router.push(`/events/${id}`)
+      router.push(`/events/${eventId}`)
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Failed to create team')
     }
@@ -65,7 +64,7 @@ export default function RegisterForEventPage() {
     try {
       await joinTeam.mutateAsync(inviteCode.trim())
       toast.success('Joined team successfully!')
-      router.push(`/events/${id}`)
+      router.push(`/events/${eventId}`)
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Failed to join team')
     } finally {
@@ -80,7 +79,7 @@ export default function RegisterForEventPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Link href={`/events/${id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6">
+          <Link href={`/events/${eventId}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6">
             <ArrowLeft className="h-4 w-4" />
             Back to event
           </Link>
@@ -110,7 +109,7 @@ export default function RegisterForEventPage() {
 
               {mode === 'create' ? (
                 <TeamForm
-                  eventId={id}
+                  eventId={eventId}
                   onSubmit={handleCreateTeam}
                   isLoading={createTeam.isPending}
                 />

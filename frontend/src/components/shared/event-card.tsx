@@ -9,10 +9,9 @@ import type { Event, EventStatus } from '@/types'
 
 const statusConfig: Record<EventStatus, { label: string; variant: 'default' | 'success' | 'warning' | 'secondary' | 'destructive' }> = {
   draft: { label: 'Draft', variant: 'secondary' },
-  upcoming: { label: 'Upcoming', variant: 'default' },
-  active: { label: 'Active', variant: 'success' },
-  completed: { label: 'Completed', variant: 'warning' },
-  cancelled: { label: 'Cancelled', variant: 'destructive' },
+  published: { label: 'Published', variant: 'default' },
+  in_progress: { label: 'In Progress', variant: 'success' },
+  closed: { label: 'Closed', variant: 'warning' },
 }
 
 interface EventCardProps {
@@ -36,14 +35,14 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
             <div
               className={cn(
                 'absolute inset-0 bg-gradient-to-br',
-                event.cover_image_url
+                event.cover_image
                   ? ''
                   : 'from-blue-500/20 via-purple-500/20 to-pink-500/20'
               )}
             >
-              {event.cover_image_url && (
+              {event.cover_image && (
                 <img
-                  src={event.cover_image_url}
+                  src={event.cover_image}
                   alt={event.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
@@ -74,13 +73,8 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
             )}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Users className="h-4 w-4 shrink-0" />
-              <span>{event.participant_count || 0} participants</span>
+              <span>Teams of {event.max_team_size}</span>
             </div>
-            {event.short_description && (
-              <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
-                {event.short_description}
-              </p>
-            )}
           </CardContent>
         </Card>
       </Link>

@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { motion, useInView, useAnimation } from 'framer-motion'
 import {
-  Calendar, Users, Trophy, Brain, Certificate, BarChart3,
+  Calendar, Users, Trophy, Brain, ScrollText, BarChart3,
   ArrowRight, Sparkles, ChevronRight, Github, Zap
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -37,7 +37,7 @@ const features = [
     gradient: 'from-green-500 to-emerald-500',
   },
   {
-    icon: Certificate,
+    icon:   ScrollText,
     title: 'Certificates',
     description: 'Automatically generate verifiable certificates for participants and winners.',
     gradient: 'from-red-500 to-rose-500',
@@ -78,10 +78,7 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
 
   useEffect(() => {
     if (isInView) {
-      controls.start({
-        count: target,
-        transition: { duration: 2, ease: 'easeOut' },
-      })
+      controls.start({ opacity: 1, transition: { duration: 2, ease: 'easeOut' } })
     }
   }, [isInView, target, controls])
 
@@ -196,7 +193,7 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
               { label: 'Events', target: stats?.total_events || 0, suffix: '+' },
-              { label: 'Participants', target: stats?.total_participants || 0, suffix: '+' },
+              { label: 'Participants', target: stats?.active_participants || 0, suffix: '+' },
               { label: 'Projects', target: stats?.total_projects || 0, suffix: '+' },
               { label: 'Teams', target: stats?.total_teams || 0, suffix: '+' },
             ].map((stat, i) => (

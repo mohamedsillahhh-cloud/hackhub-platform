@@ -37,10 +37,6 @@ export default function DashboardPage() {
 
   const techData = (stats.top_technologies || []).slice(0, 10)
 
-  const universityData = (stats.participants_by_university || []).slice(0, 10)
-
-  const usersOverTimeData = stats.users_over_time || []
-
   const recentEventsData = (stats.recent_events || []).slice(0, 5)
 
   return (
@@ -65,8 +61,8 @@ export default function DashboardPage() {
             {[
               { label: 'Total Users', value: stats.total_users, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
               { label: 'Total Events', value: stats.total_events, icon: Calendar, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-              { label: 'Active Events', value: stats.active_events, icon: TrendingUp, color: 'text-green-500', bg: 'bg-green-500/10' },
-              { label: 'Total Participants', value: stats.total_participants, icon: UserCheck, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+              { label: 'Active Events', value: stats.events_by_status?.in_progress || 0, icon: TrendingUp, color: 'text-green-500', bg: 'bg-green-500/10' },
+              { label: 'Active Participants', value: stats.active_participants, icon: UserCheck, color: 'text-orange-500', bg: 'bg-orange-500/10' },
             ].map((stat, i) => {
               const Icon = stat.icon
               return (
@@ -94,29 +90,6 @@ export default function DashboardPage() {
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Users Over Time</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {usersOverTimeData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={usersOverTimeData}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="date" className="text-xs" />
-                      <YAxis className="text-xs" />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                    No data available
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Events by Status</CardTitle>
@@ -172,28 +145,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Participants by University</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {universityData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={universityData} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis type="number" className="text-xs" />
-                      <YAxis type="category" dataKey="university" className="text-xs" width={120} />
-                      <Tooltip />
-                      <Bar dataKey="count" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                    No data available
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+
           </div>
 
           {/* Recent Events */}
@@ -207,7 +159,7 @@ export default function DashboardPage() {
                   { key: 'title', header: 'Title' },
                   { key: 'status', header: 'Status' },
                   { key: 'start_date', header: 'Start Date', render: (item: any) => formatDate(item.start_date) },
-                  { key: 'participants', header: 'Participants', render: (item: any) => item.participant_count || 0 },
+                  { key: 'status', header: 'Status', render: (item: any) => item.status },
                 ]}
                 data={recentEventsData}
                 keyExtractor={(item: any) => item.id}

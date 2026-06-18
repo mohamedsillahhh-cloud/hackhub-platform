@@ -27,7 +27,7 @@ class Certificate(Base):
     verification_code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     digital_signature: Mapped[str] = mapped_column(Text, nullable=True)
     issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    metadata: Mapped[dict] = mapped_column(JSON, nullable=True, default=dict)
+    extra_data: Mapped[dict] = mapped_column("metadata", JSON, nullable=True, default=dict)
 
     user = relationship("User", back_populates="certificates", lazy="selectin")
     event = relationship("Event", back_populates="certificates", lazy="selectin")

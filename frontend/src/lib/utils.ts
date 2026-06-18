@@ -31,16 +31,18 @@ export function generateInitials(name: string): string {
 export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
     draft: 'bg-gray-500',
+    published: 'bg-blue-500',
     upcoming: 'bg-blue-500',
+    in_progress: 'bg-green-500',
     active: 'bg-green-500',
+    closed: 'bg-purple-500',
     completed: 'bg-purple-500',
     cancelled: 'bg-red-500',
     pending: 'bg-yellow-500',
     approved: 'bg-green-500',
     rejected: 'bg-red-500',
     submitted: 'bg-blue-500',
-    evaluated: 'bg-green-500',
-    disqualified: 'bg-red-500',
+    finalized: 'bg-green-500',
   }
   return colors[status] || 'bg-gray-500'
 }
@@ -48,16 +50,18 @@ export function getStatusColor(status: string): string {
 export function getStatusTextColor(status: string): string {
   const colors: Record<string, string> = {
     draft: 'text-gray-500',
+    published: 'text-blue-500',
     upcoming: 'text-blue-500',
+    in_progress: 'text-green-500',
     active: 'text-green-500',
+    closed: 'text-purple-500',
     completed: 'text-purple-500',
     cancelled: 'text-red-500',
     pending: 'text-yellow-500',
     approved: 'text-green-500',
     rejected: 'text-red-500',
     submitted: 'text-blue-500',
-    evaluated: 'text-green-500',
-    disqualified: 'text-red-500',
+    finalized: 'text-green-500',
   }
   return colors[status] || 'text-gray-500'
 }

@@ -9,8 +9,8 @@ import { cn } from '@/lib/utils'
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false)
-  const { data: unreadCount } = useUnreadCount()
-  const { data: notificationsData } = useNotifications({ size: 10 })
+  const unreadCount = useUnreadCount()
+  const { data: notificationsData } = useNotifications()
   const markRead = useMarkRead()
   const markAllRead = useMarkAllRead()
 
@@ -85,7 +85,7 @@ export function NotificationBell() {
                             {notif.message}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {formatRelativeTime(notif.created_at)}
+                            {formatRelativeTime(notif.sent_at)}
                           </p>
                         </div>
                         {!notif.read && (

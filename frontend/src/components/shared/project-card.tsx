@@ -15,8 +15,7 @@ interface ProjectCardProps {
 const statusConfig: Record<string, { label: string; className: string }> = {
   draft: { label: 'Draft', className: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400' },
   submitted: { label: 'Submitted', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
-  evaluated: { label: 'Evaluated', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
-  disqualified: { label: 'Disqualified', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  finalized: { label: 'Finalized', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
 }
 
 export function ProjectCard({ project, index = 0 }: ProjectCardProps) {
@@ -64,16 +63,12 @@ export function ProjectCard({ project, index = 0 }: ProjectCardProps) {
                   <Github className="h-4 w-4" />
                 </span>
               )}
-              {project.demo_url && (
+              {project.demo_video_url && (
                 <span className="text-muted-foreground hover:text-foreground transition-colors">
                   <ExternalLink className="h-4 w-4" />
                 </span>
               )}
-              {project.score !== undefined && (
-                <span className="text-sm font-medium ml-auto">
-                  Score: {project.score}
-                </span>
-              )}
+
             </div>
           </CardContent>
         </Card>

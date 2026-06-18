@@ -1,8 +1,8 @@
 'use client'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api'
-import { useEffect, useRef, useState } from 'react'
 import type { RankingEntry } from '@/types'
+import { useEffect, useState } from 'react'
 
 export function useRanking(eventId: string) {
   return useQuery({
@@ -13,43 +13,37 @@ export function useRanking(eventId: string) {
   })
 }
 
-export function useStreamRanking(eventId: string) {
+export function useStreamRanking(eventId: string): {
+  ranking: RankingEntry[]
+  isConnected: boolean
+} {
   const [ranking, setRanking] = useState<RankingEntry[]>([])
   const [isConnected, setIsConnected] = useState(false)
-  const eventSourceRef = useRef<EventSource | null>(null)
 
   useEffect(() => {
     if (!eventId) return
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
-    const token = localStorage.getItem('auth_tokens')
-    let parsedToken = ''
-    if (token) {
-      try {
-        parsedToken = JSON.parse(token).access_token
-      } catch { /* empty */ }
-    }
+    const eventSource = new EventSource(
+      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/events/${eventId}/ranking/stream`
+    )
 
-    const url = `${apiUrl}/events/${eventId}/ranking/stream?token=${parsedToken}`
-    const es = new EventSource(url)
-    eventSourceRef.current = es
+    eventSource.onopen = () => setIsConnected(true)
 
-    es.onopen = () => setIsConnected(true)
-
-    es.onmessage = (event) => {
+    eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
         setRanking(data)
-      } catch { /* empty */ }
+      } catch {
+        // ignore parse errors
+      }
     }
 
-    es.onerror = () => {
+    eventSource.onerror = () => {
       setIsConnected(false)
     }
 
     return () => {
-      es.close()
-      setIsConnected(false)
+      eventSource.close()
     }
   }, [eventId])
 

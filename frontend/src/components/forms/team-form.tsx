@@ -29,10 +29,7 @@ export function TeamForm({ eventId, onSubmit, isLoading }: TeamFormProps) {
   })
 
   const handleFormSubmit = async (data: TeamFormData) => {
-    await onSubmit({
-      ...data,
-      event_id: eventId,
-    })
+    await onSubmit(data)
   }
 
   return (

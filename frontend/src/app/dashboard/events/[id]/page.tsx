@@ -32,8 +32,8 @@ export default function ManageEventDetailPage() {
   const { data: event, isLoading, error, refetch } = useEvent(id)
   const { data: ranking } = useRanking(id)
   const { data: stats, isLoading: statsLoading } = useEventStats(id)
-  const { data: projectsData } = useProjects({ event_id: id })
-  const updateEvent = useUpdateEvent(id)
+  const { data: projectsData } = useProjects(id)
+  const updateEvent = useUpdateEvent()
   const changeStatus = useChangeEventStatus()
 
   if (authLoading) return <LoadingState />
@@ -47,7 +47,7 @@ export default function ManageEventDetailPage() {
 
   const handleUpdateEvent = async (data: CreateEventRequest) => {
     try {
-      await updateEvent.mutateAsync(data)
+      await updateEvent.mutateAsync({ id, data })
       toast.success('Event updated!')
       router.push(`/dashboard/events/${id}`)
     } catch (error: any) {
@@ -64,7 +64,7 @@ export default function ManageEventDetailPage() {
     }
   }
 
-  const projects = projectsData?.items || []
+  const projects = projectsData || []
 
   return (
     <div className="min-h-screen py-8">
@@ -98,7 +98,7 @@ export default function ManageEventDetailPage() {
               { label: 'Teams', value: stats?.total_teams || 0, icon: Users },
               { label: 'Projects', value: stats?.total_projects || 0, icon: FolderKanban },
               { label: 'Submitted', value: stats?.projects_submitted || 0, icon: Trophy },
-              { label: 'Evaluated', value: stats?.projects_evaluated || 0, icon: Eye },
+              { label: 'Evaluated', value: 0, icon: Eye },
             ].map((stat) => {
               const Icon = stat.icon
               return (
@@ -117,21 +117,21 @@ export default function ManageEventDetailPage() {
 
           <div className="flex flex-wrap gap-2 mb-8">
             {event.status === 'draft' && (
-              <Button onClick={() => handleChangeStatus('upcoming')} size="sm">
+              <Button onClick={() => handleChangeStatus('published')} size="sm">
                 Publish Event
               </Button>
             )}
-            {event.status === 'upcoming' && (
-              <Button onClick={() => handleChangeStatus('active')} size="sm">
+            {event.status === 'published' && (
+              <Button onClick={() => handleChangeStatus('in_progress')} size="sm">
                 Start Event
               </Button>
             )}
-            {event.status === 'active' && (
-              <Button onClick={() => handleChangeStatus('completed')} size="sm" variant="secondary">
-                Complete Event
+            {event.status === 'in_progress' && (
+              <Button onClick={() => handleChangeStatus('closed')} size="sm" variant="secondary">
+                Close Event
               </Button>
             )}
-            {event.status !== 'cancelled' && event.status !== 'completed' && (
+            {event.status !== 'closed' && (
               <Button onClick={() => handleChangeStatus('cancelled')} size="sm" variant="destructive">
                 Cancel Event
               </Button>
@@ -168,12 +168,12 @@ export default function ManageEventDetailPage() {
                       <dd className="font-medium">{event.end_date}</dd>
                     </div>
                     <div>
-                      <dt className="text-sm text-muted-foreground">Participants</dt>
-                      <dd className="font-medium">{event.participant_count || 0}</dd>
+                      <dt className="text-sm text-muted-foreground">Is Online</dt>
+                      <dd className="font-medium">{event.is_online ? 'Yes' : 'No'}</dd>
                     </div>
                     <div>
-                      <dt className="text-sm text-muted-foreground">Teams</dt>
-                      <dd className="font-medium">{event.team_count || 0}</dd>
+                      <dt className="text-sm text-muted-foreground">Max Team Size</dt>
+                      <dd className="font-medium">{event.max_team_size}</dd>
                     </div>
                   </dl>
                 </CardContent>
@@ -209,7 +209,7 @@ export default function ManageEventDetailPage() {
             <TabsContent value="evaluations" className="mt-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {projects.length > 0 ? (
-                  projects.map((project, i) => (
+                  projects.map((project: any, i: number) => (
                     <ProjectCard key={project.id} project={project} index={i} />
                   ))
                 ) : (
@@ -235,18 +235,16 @@ export default function ManageEventDetailPage() {
             initialData={{
               title: event.title,
               description: event.description,
-              short_description: event.short_description,
-              cover_image_url: event.cover_image_url,
+              cover_image: event.cover_image,
               start_date: event.start_date,
               end_date: event.end_date,
-              registration_deadline: event.registration_deadline,
               location: event.location,
-              is_remote: event.is_remote,
-              max_participants: event.max_participants,
+              is_online: event.is_online,
               max_team_size: event.max_team_size,
+              min_team_size: event.min_team_size,
               prizes: event.prizes,
               sponsors: event.sponsors,
-              rules: event.rules,
+              regulations: event.regulations,
             }}
             onSubmit={handleUpdateEvent}
             isLoading={updateEvent.isPending}

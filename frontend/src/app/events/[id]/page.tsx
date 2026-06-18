@@ -29,17 +29,17 @@ export default function EventDetailPage() {
   if (error) return <ErrorState message="Failed to load event" onRetry={() => refetch()} className="min-h-[calc(100vh-4rem)]" />
   if (!event) return null
 
-  const isActive = event.status === 'active' || event.status === 'upcoming'
+  const isActive = event.status === 'in_progress' || event.status === 'published'
 
   return (
     <div className="min-h-screen">
       <div className="relative h-64 sm:h-80 md:h-96 overflow-hidden">
         <div className={cn(
           'absolute inset-0 bg-gradient-to-br',
-          event.cover_image_url ? '' : 'from-blue-600/30 via-purple-600/30 to-pink-600/30'
+          event.cover_image ? '' : 'from-blue-600/30 via-purple-600/30 to-pink-600/30'
         )}>
-          {event.cover_image_url && (
-            <img src={event.cover_image_url} alt={event.title} className="w-full h-full object-cover" />
+          {event.cover_image && (
+            <img src={event.cover_image} alt={event.title} className="w-full h-full object-cover" />
           )}
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
@@ -52,7 +52,7 @@ export default function EventDetailPage() {
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge variant={event.status === 'active' ? 'success' : event.status === 'upcoming' ? 'default' : 'secondary'}>
+                  <Badge variant={event.status === 'in_progress' ? 'success' : event.status === 'published' ? 'default' : 'secondary'}>
                     {event.status}
                   </Badge>
                 </div>
@@ -88,22 +88,22 @@ export default function EventDetailPage() {
                   </div>
                 </div>
 
-                {event.prizes && (
+                {event.prizes && Object.keys(event.prizes).length > 0 && (
                   <>
                     <Separator />
                     <div>
                       <h2 className="text-xl font-semibold mb-3">Prizes</h2>
-                      <p className="text-muted-foreground whitespace-pre-wrap">{event.prizes}</p>
+                      <p className="text-muted-foreground whitespace-pre-wrap">{JSON.stringify(event.prizes, null, 2)}</p>
                     </div>
                   </>
                 )}
 
-                {event.sponsors && (
+                {event.sponsors && Object.keys(event.sponsors).length > 0 && (
                   <>
                     <Separator />
                     <div>
                       <h2 className="text-xl font-semibold mb-3">Sponsors</h2>
-                      <p className="text-muted-foreground whitespace-pre-wrap">{event.sponsors}</p>
+                      <p className="text-muted-foreground whitespace-pre-wrap">{JSON.stringify(event.sponsors, null, 2)}</p>
                     </div>
                   </>
                 )}
@@ -178,34 +178,24 @@ export default function EventDetailPage() {
                   <Globe className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium">Format</p>
-                    <p className="text-sm text-muted-foreground">{event.is_remote ? 'Remote' : 'In-Person'}</p>
+                    <p className="text-sm text-muted-foreground">{event.is_online ? 'Online' : 'In-Person'}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <Users className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium">Participants</p>
-                    <p className="text-sm text-muted-foreground">
-                      {event.participant_count || 0}
-                      {event.max_participants ? ` / ${event.max_participants}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Users className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">Teams</p>
-                    <p className="text-sm text-muted-foreground">{event.team_count || 0}</p>
+                    <p className="text-sm font-medium">Max Team Size</p>
+                    <p className="text-sm text-muted-foreground">{event.max_team_size} members</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {event.rules && (
+            {event.regulations && (
               <Card>
                 <CardContent className="p-6">
-                  <h3 className="font-semibold mb-3">Rules</h3>
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">{event.rules}</div>
+                  <h3 className="font-semibold mb-3">Regulations</h3>
+                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">{event.regulations}</div>
                 </CardContent>
               </Card>
             )}

@@ -3,47 +3,49 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api'
 import type { CreateProjectRequest } from '@/types'
 
-export function useProjects(params?: Record<string, unknown>) {
+export function useProjects(eventId: string) {
   return useQuery({
-    queryKey: ['projects', params],
-    queryFn: () => apiClient.projects.list(params),
+    queryKey: ['projects', eventId],
+    queryFn: () => apiClient.projects.list(eventId),
+    enabled: !!eventId,
   })
 }
 
-export function useProject(id: string) {
+export function useProject(eventId: string, projectId: string) {
   return useQuery({
-    queryKey: ['projects', id],
-    queryFn: () => apiClient.projects.getById(id),
-    enabled: !!id,
+    queryKey: ['projects', eventId, projectId],
+    queryFn: () => apiClient.projects.getById(eventId, projectId),
+    enabled: !!eventId && !!projectId,
   })
 }
 
-export function useCreateProject() {
+export function useCreateProject(eventId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: CreateProjectRequest) => apiClient.projects.create(data),
+    mutationFn: (data: CreateProjectRequest) => apiClient.projects.create(eventId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['projects', eventId] })
     },
   })
 }
 
-export function useUpdateProject(id: string) {
+export function useUpdateProject(eventId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: Partial<CreateProjectRequest>) => apiClient.projects.update(id, data),
+    mutationFn: ({ projectId, data }: { projectId: string; data: Partial<CreateProjectRequest> }) =>
+      apiClient.projects.update(eventId, projectId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['projects', eventId] })
     },
   })
 }
 
-export function useSubmitProject() {
+export function useSubmitProject(eventId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => apiClient.projects.submit(id),
+    mutationFn: (projectId: string) => apiClient.projects.submit(eventId, projectId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['projects', eventId] })
     },
   })
 }

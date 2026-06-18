@@ -2,7 +2,7 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Copy, Check, UserPlus, LogOut, Trash2, Crown, Shield } from 'lucide-react'
+import { ArrowLeft, Copy, Check, UserPlus, LogOut, Trash2, Crown } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator'
 import { LoadingState } from '@/components/ui/loading-state'
 import { ErrorState } from '@/components/ui/error-state'
 import { ProjectForm } from '@/components/forms/project-form'
-import { useTeam, useLeaveTeam, useRemoveMember, useInviteMember } from '@/hooks/useTeams'
+import { useTeamById, useLeaveTeam, useRemoveMember, useInviteMember } from '@/hooks/useTeams'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreateProject } from '@/hooks/useProjects'
 import { generateInitials, getRoleBadgeColor } from '@/lib/utils'
@@ -23,15 +23,10 @@ import type { TeamMemberRole, CreateProjectRequest } from '@/types'
 export default function TeamDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const id = params.id as string
+  const teamId = params.id as string
   const { user } = useAuth()
-  const { data: team, isLoading, error, refetch } = useTeam(id)
-  const leaveTeam = useLeaveTeam()
-  const removeMember = useRemoveMember()
-  const inviteMember = useInviteMember()
-  const createProject = useCreateProject()
-
-  const [inviteEmail, setInviteEmail] = useState('')
+  const { data: team, isLoading, error, refetch } = useTeamById(teamId)
+  const [inviteUserId, setInviteUserId] = useState('')
   const [copied, setCopied] = useState(false)
   const [showProjectForm, setShowProjectForm] = useState(false)
 
@@ -40,21 +35,26 @@ export default function TeamDetailPage() {
   if (!team) return null
 
   const isLeader = team.leader_id === user?.id
-  const isMember = team.members?.some((m) => m.user_id === user?.id)
+  const eventId = team.event_id
+
+  const leaveTeam = useLeaveTeam(eventId, teamId)
+  const removeMember = useRemoveMember(eventId, teamId)
+  const inviteMember = useInviteMember(eventId, teamId)
+  const createProject = useCreateProject(eventId)
 
   const handleCopyInviteCode = () => {
-    navigator.clipboard.writeText(team.invite_code)
+    navigator.clipboard.writeText(team.id)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
     toast.success('Invite code copied!')
   }
 
   const handleInviteMember = async () => {
-    if (!inviteEmail.trim()) return
+    if (!inviteUserId.trim()) return
     try {
-      await inviteMember.mutateAsync({ teamId: id, emailOrUsername: inviteEmail.trim() })
+      await inviteMember.mutateAsync(inviteUserId.trim())
       toast.success('Invitation sent!')
-      setInviteEmail('')
+      setInviteUserId('')
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Failed to invite member')
     }
@@ -62,7 +62,7 @@ export default function TeamDetailPage() {
 
   const handleLeaveTeam = async () => {
     try {
-      await leaveTeam.mutateAsync(id)
+      await leaveTeam.mutateAsync()
       toast.success('Left team successfully')
       router.push('/teams')
     } catch (error: any) {
@@ -70,9 +70,9 @@ export default function TeamDetailPage() {
     }
   }
 
-  const handleRemoveMember = async (userId: string) => {
+  const handleRemoveMember = async (memberId: string) => {
     try {
-      await removeMember.mutateAsync({ teamId: id, userId })
+      await removeMember.mutateAsync(memberId)
       toast.success('Member removed')
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Failed to remove member')
@@ -89,9 +89,8 @@ export default function TeamDetailPage() {
     }
   }
 
-  const roleLabels: Record<TeamMemberRole, string> = {
+  const roleLabels: Record<string, string> = {
     leader: 'Leader',
-    co_leader: 'Co-Leader',
     member: 'Member',
   }
 
@@ -115,11 +114,6 @@ export default function TeamDetailPage() {
                         <p className="text-muted-foreground mt-1">{team.description}</p>
                       )}
                     </div>
-                    {team.event && (
-                      <Badge variant="outline">
-                        <Link href={`/events/${team.event_id}`}>{team.event.title}</Link>
-                      </Badge>
-                    )}
                   </div>
                 </CardHeader>
               </Card>
@@ -129,31 +123,31 @@ export default function TeamDetailPage() {
                   <CardTitle className="text-lg">Members ({team.members?.length || 0})</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {team.members?.map((member) => (
+                  {team.members?.map((member: any) => (
                     <div key={member.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors">
                       <div className="flex items-center gap-3">
                         <Avatar>
-                          <AvatarFallback>{generateInitials(member.user?.full_name || 'U')}</AvatarFallback>
+                          <AvatarFallback>{generateInitials(member.full_name || member.username || 'U')}</AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="text-sm font-medium">
-                            {member.user?.full_name}
+                            {member.full_name}
                             {member.user_id === team.leader_id && (
                               <Crown className="inline h-3 w-3 text-yellow-500 ml-1" />
                             )}
                           </p>
-                          <p className="text-xs text-muted-foreground">@{member.user?.username}</p>
+                          <p className="text-xs text-muted-foreground">@{member.username}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge className={getRoleBadgeColor(member.role)}>
-                          {roleLabels[member.role]}
+                          {roleLabels[member.role] || member.role}
                         </Badge>
-                        {(isLeader || member.role === 'co_leader') && member.user_id !== user?.id && (
+                        {isLeader && member.user_id !== user?.id && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleRemoveMember(member.user_id)}
+                            onClick={() => handleRemoveMember(member.id)}
                             className="text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -164,82 +158,84 @@ export default function TeamDetailPage() {
                   ))}
                 </CardContent>
               </Card>
-
-              {isLeader && !team.project && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Project</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {showProjectForm ? (
-                      <ProjectForm
-                        teamId={id}
-                        eventId={team.event_id}
-                        onSubmit={handleCreateProject}
-                        isLoading={createProject.isPending}
-                      />
-                    ) : (
-                      <Button onClick={() => setShowProjectForm(true)}>
-                        Create Project
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
             </div>
 
             <div className="space-y-6">
-              {(isLeader || isMember) && (
+              {isLeader && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Team Actions</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {isLeader && (
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Invite Code</label>
-                        <div className="flex gap-2">
-                          <code className="flex-1 px-3 py-2 rounded-md bg-muted text-sm font-mono">
-                            {team.invite_code}
-                          </code>
-                          <Button variant="outline" size="icon" onClick={handleCopyInviteCode}>
-                            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                          </Button>
-                        </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Invite Code</label>
+                      <div className="flex gap-2">
+                        <code className="flex-1 px-3 py-2 rounded-md bg-muted text-sm font-mono">
+                          {team.id.slice(0, 8)}
+                        </code>
+                        <Button variant="outline" size="icon" onClick={handleCopyInviteCode}>
+                          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </Button>
                       </div>
-                    )}
+                    </div>
 
-                    {isLeader && (
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Invite by Email or Username</label>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="email or username"
-                            value={inviteEmail}
-                            onChange={(e) => setInviteEmail(e.target.value)}
-                          />
-                          <Button variant="outline" onClick={handleInviteMember}>
-                            <UserPlus className="h-4 w-4" />
-                          </Button>
-                        </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Invite by User ID</label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="user ID"
+                          value={inviteUserId}
+                          onChange={(e) => setInviteUserId(e.target.value)}
+                        />
+                        <Button variant="outline" onClick={handleInviteMember}>
+                          <UserPlus className="h-4 w-4" />
+                        </Button>
                       </div>
-                    )}
+                    </div>
 
                     <Separator />
 
-                    {!isLeader && (
-                      <Button variant="destructive" className="w-full" onClick={handleLeaveTeam}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Leave Team
-                      </Button>
-                    )}
+                    <Button variant="destructive" className="w-full" onClick={handleLeaveTeam}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Team
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
 
-                    {isLeader && (
-                      <Button variant="destructive" className="w-full" onClick={handleLeaveTeam}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Team
-                      </Button>
-                    )}
+              {!isLeader && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <Button variant="destructive" className="w-full" onClick={handleLeaveTeam}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Leave Team
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {isLeader && !showProjectForm && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <Button className="w-full" onClick={() => setShowProjectForm(true)}>
+                      Create Project
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {isLeader && showProjectForm && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">New Project</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ProjectForm
+                      teamId={teamId}
+                      eventId={eventId}
+                      onSubmit={handleCreateProject}
+                      isLoading={createProject.isPending}
+                    />
                   </CardContent>
                 </Card>
               )}

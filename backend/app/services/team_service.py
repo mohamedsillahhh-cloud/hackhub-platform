@@ -24,8 +24,7 @@ class TeamService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
         teams = await self.team_repo.get_user_teams(leader_id)
-            teams = await self.team_repo.get_user_teams(leader_id)
-            for t in teams:
+        for t in teams:
                 if str(t.event_id) == str(event_id):
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,

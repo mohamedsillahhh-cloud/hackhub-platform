@@ -59,7 +59,7 @@ export function RankingTable({ entries, isLoading }: RankingTableProps) {
 
           return (
             <motion.div
-              key={entry.team.id}
+              key={entry.team_id || entry.position}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.03 }}
@@ -83,13 +83,13 @@ export function RankingTable({ entries, isLoading }: RankingTableProps) {
               </div>
               <Avatar className="h-10 w-10 shrink-0">
                 <AvatarFallback>
-                  {generateInitials(entry.team.name)}
+                  {generateInitials(entry.team_name || 'T')}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{entry.team.name}</p>
-                {entry.project && (
-                  <p className="text-xs text-muted-foreground truncate">{entry.project.name}</p>
+                <p className="font-medium text-sm truncate">{entry.team_name || 'Unknown Team'}</p>
+                {entry.project_name && (
+                  <p className="text-xs text-muted-foreground truncate">{entry.project_name}</p>
                 )}
               </div>
               <div className="text-right shrink-0">

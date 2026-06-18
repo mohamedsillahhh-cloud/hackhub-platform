@@ -3,10 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api'
 import type { CreateEventRequest } from '@/types'
 
-export function useEvents(params?: Record<string, unknown>) {
+export function useEvents(filters?: Record<string, unknown>) {
   return useQuery({
-    queryKey: ['events', params],
-    queryFn: () => apiClient.events.list(params),
+    queryKey: ['events', filters],
+    queryFn: () => apiClient.events.list(filters),
   })
 }
 
@@ -28,10 +28,11 @@ export function useCreateEvent() {
   })
 }
 
-export function useUpdateEvent(id: string) {
+export function useUpdateEvent() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: Partial<CreateEventRequest>) => apiClient.events.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<CreateEventRequest> }) =>
+      apiClient.events.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] })
     },

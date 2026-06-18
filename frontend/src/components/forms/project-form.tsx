@@ -13,8 +13,8 @@ const projectSchema = z.object({
   name: z.string().min(3, 'Project name must be at least 3 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   github_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
-  demo_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
-  video_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+  demo_video_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+  presentation_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
 })
 
 type ProjectFormData = z.infer<typeof projectSchema>
@@ -42,8 +42,8 @@ export function ProjectForm({ teamId, eventId, challengeId, initialData, onSubmi
       name: initialData?.name || '',
       description: initialData?.description || '',
       github_url: initialData?.github_url || '',
-      demo_url: initialData?.demo_url || '',
-      video_url: initialData?.video_url || '',
+      demo_video_url: initialData?.demo_video_url || '',
+      presentation_url: initialData?.presentation_url || '',
     },
   })
 
@@ -63,11 +63,9 @@ export function ProjectForm({ teamId, eventId, challengeId, initialData, onSubmi
     await onSubmit({
       ...data,
       github_url: data.github_url || undefined,
-      demo_url: data.demo_url || undefined,
-      video_url: data.video_url || undefined,
+      demo_video_url: data.demo_video_url || undefined,
+      presentation_url: data.presentation_url || undefined,
       tech_stack: techStack,
-      team_id: teamId,
-      event_id: eventId,
       challenge_id: challengeId,
     })
   }
@@ -98,16 +96,16 @@ export function ProjectForm({ teamId, eventId, challengeId, initialData, onSubmi
         {...register('github_url')}
       />
       <Input
-        label="Demo URL"
+        label="Demo Video URL"
         placeholder="https://your-demo.vercel.app"
-        error={errors.demo_url?.message}
-        {...register('demo_url')}
+        error={errors.demo_video_url?.message}
+        {...register('demo_video_url')}
       />
       <Input
-        label="Video URL"
+        label="Presentation URL"
         placeholder="https://youtube.com/watch?v=..."
-        error={errors.video_url?.message}
-        {...register('video_url')}
+        error={errors.presentation_url?.message}
+        {...register('presentation_url')}
       />
       <div className="space-y-1">
         <label className="text-sm font-medium">Tech Stack</label>

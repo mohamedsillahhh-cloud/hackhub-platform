@@ -2,22 +2,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api'
 
-export function useNotifications(params?: Record<string, unknown>) {
+export function useNotifications() {
   return useQuery({
-    queryKey: ['notifications', params],
-    queryFn: () => apiClient.notifications.list(params),
+    queryKey: ['notifications'],
+    queryFn: () => apiClient.notifications.list(),
+    refetchInterval: 30000,
   })
 }
 
 export function useUnreadCount() {
-  return useQuery({
-    queryKey: ['notifications', 'unread-count'],
-    queryFn: async () => {
-      const result = await apiClient.notifications.list({ read: false, size: 1 })
-      return result.total
-    },
-    refetchInterval: 30000,
-  })
+  const { data } = useNotifications()
+  const unread = data?.items?.filter((n) => !n.read).length || 0
+  return unread
 }
 
 export function useMarkRead() {

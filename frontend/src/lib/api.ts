@@ -2,7 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import type {
   LoginRequest, RegisterRequest, User, Event, Team, TeamMember,
   Challenge, ChallengeCategory, Criterion, Project, Evaluation,
-  EvaluationScore, Certificate, Notification, AuthTokens,
+  Certificate, Notification, AuthTokens,
   PaginatedResponse, RankingEntry, DashboardStats, EventDashboardStats,
   CreateEventRequest, CreateTeamRequest, CreateProjectRequest,
   CreateChallengeRequest, SubmitEvaluationRequest, AIAskRequest,
@@ -104,15 +104,15 @@ const apiClient = {
     refresh: (refreshToken: string) =>
       api.post<AuthTokens>('/auth/refresh', { refresh_token: refreshToken }).then((r) => r.data),
     verifyEmail: (token: string) =>
-      api.post('/auth/verify-email', { token }).then((r) => r.data),
+      api.post(`/auth/verify-email/${token}`).then((r) => r.data),
     resetPassword: (email: string) =>
-      api.post('/auth/reset-password', { email }).then((r) => r.data),
+      api.post('/auth/password-reset', { email }).then((r) => r.data),
     confirmReset: (token: string, password: string) =>
-      api.post('/auth/confirm-reset', { token, password }).then((r) => r.data),
+      api.post('/auth/password-reset/confirm', { token, password }).then((r) => r.data),
     getMe: () =>
       api.get<User>('/auth/me').then((r) => r.data),
     updateProfile: (data: Partial<User>) =>
-      api.patch<User>('/auth/me', data).then((r) => r.data),
+      api.put<User>('/auth/me', data).then((r) => r.data),
   },
 
   events: {
@@ -123,7 +123,7 @@ const apiClient = {
     create: (data: CreateEventRequest) =>
       api.post<Event>('/events', data).then((r) => r.data),
     update: (id: string, data: Partial<CreateEventRequest>) =>
-      api.patch<Event>(`/events/${id}`, data).then((r) => r.data),
+      api.put<Event>(`/events/${id}`, data).then((r) => r.data),
     delete: (id: string) =>
       api.delete(`/events/${id}`).then((r) => r.data),
     changeStatus: (id: string, status: string) =>
@@ -131,67 +131,71 @@ const apiClient = {
   },
 
   teams: {
-    list: (params?: Record<string, unknown>) =>
-      api.get<PaginatedResponse<Team>>('/teams', { params }).then((r) => r.data),
-    create: (data: CreateTeamRequest) =>
-      api.post<Team>('/teams', data).then((r) => r.data),
-    invite: (teamId: string, emailOrUsername: string) =>
-      api.post(`/teams/${teamId}/invite`, { email_or_username: emailOrUsername }).then((r) => r.data),
-    join: (inviteCode: string) =>
-      api.post<Team>('/teams/join', { invite_code: inviteCode }).then((r) => r.data),
-    accept: (teamId: string) =>
-      api.post(`/teams/${teamId}/accept`).then((r) => r.data),
-    reject: (teamId: string) =>
-      api.post(`/teams/${teamId}/reject`).then((r) => r.data),
-    removeMember: (teamId: string, userId: string) =>
-      api.delete(`/teams/${teamId}/members/${userId}`).then((r) => r.data),
-    leave: (teamId: string) =>
-      api.post(`/teams/${teamId}/leave`).then((r) => r.data),
-    getById: (id: string) =>
-      api.get<Team>(`/teams/${id}`).then((r) => r.data),
+    list: (eventId: string) =>
+      api.get<Team[]>(`/events/${eventId}/teams`).then((r) => r.data),
+    create: (eventId: string, data: CreateTeamRequest) =>
+      api.post<Team>(`/events/${eventId}/teams`, data).then((r) => r.data),
+    getById: (eventId: string, teamId: string) =>
+      api.get<Team>(`/events/${eventId}/teams/${teamId}`).then((r) => r.data),
+    getByIdStandalone: (teamId: string) =>
+      api.get<Team>(`/teams/${teamId}`).then((r) => r.data),
+    listMyTeams: () =>
+      api.get<Team[]>('/teams').then((r) => r.data),
+    invite: (eventId: string, teamId: string, userId: string) =>
+      api.post<TeamMember>(`/events/${eventId}/teams/${teamId}/invite`, { user_id: userId }).then((r) => r.data),
+    join: (eventId: string, inviteCode: string) =>
+      api.post<Team>(`/events/${eventId}/teams/join`, { invitation_code: inviteCode }).then((r) => r.data),
+    accept: (eventId: string, teamId: string, memberId: string) =>
+      api.post(`/events/${eventId}/teams/${teamId}/accept/${memberId}`).then((r) => r.data),
+    reject: (eventId: string, teamId: string, memberId: string) =>
+      api.post(`/events/${eventId}/teams/${teamId}/reject/${memberId}`).then((r) => r.data),
+    removeMember: (eventId: string, teamId: string, memberId: string) =>
+      api.delete(`/events/${eventId}/teams/${teamId}/members/${memberId}`).then((r) => r.data),
+    leave: (eventId: string, teamId: string) =>
+      api.delete(`/events/${eventId}/teams/${teamId}/leave`).then((r) => r.data),
   },
 
   challenges: {
     list: (eventId: string) =>
       api.get<Challenge[]>(`/events/${eventId}/challenges`).then((r) => r.data),
-    create: (data: CreateChallengeRequest) =>
-      api.post<Challenge>('/challenges', data).then((r) => r.data),
-    getById: (id: string) =>
-      api.get<Challenge>(`/challenges/${id}`).then((r) => r.data),
-    update: (id: string, data: Partial<CreateChallengeRequest>) =>
-      api.patch<Challenge>(`/challenges/${id}`, data).then((r) => r.data),
-    delete: (id: string) =>
-      api.delete(`/challenges/${id}`).then((r) => r.data),
-    createCategory: (eventId: string, data: { name: string; description?: string }) =>
-      api.post<ChallengeCategory>(`/events/${eventId}/categories`, data).then((r) => r.data),
+    create: (eventId: string, data: CreateChallengeRequest) =>
+      api.post<Challenge>(`/events/${eventId}/challenges`, data).then((r) => r.data),
+    getById: (eventId: string, challengeId: string) =>
+      api.get<Challenge>(`/events/${eventId}/challenges/${challengeId}`).then((r) => r.data),
+    update: (eventId: string, challengeId: string, data: Partial<CreateChallengeRequest>) =>
+      api.put<Challenge>(`/events/${eventId}/challenges/${challengeId}`, data).then((r) => r.data),
+    delete: (eventId: string, challengeId: string) =>
+      api.delete(`/events/${eventId}/challenges/${challengeId}`).then((r) => r.data),
     listCategories: (eventId: string) =>
-      api.get<ChallengeCategory[]>(`/events/${eventId}/categories`).then((r) => r.data),
-    createCriterion: (challengeId: string, data: Omit<Criterion, 'id' | 'challenge_id' | 'created_at'>) =>
-      api.post<Criterion>(`/challenges/${challengeId}/criteria`, data).then((r) => r.data),
+      api.get<ChallengeCategory[]>(`/events/${eventId}/challenges/categories`).then((r) => r.data),
+    createCategory: (eventId: string, data: { name: string; description?: string }) =>
+      api.post<ChallengeCategory>(`/events/${eventId}/challenges/categories`, data).then((r) => r.data),
+    createCriterion: (eventId: string, data: { category_id: string; name: string; max_score: number; weight: number }) =>
+      api.post<Criterion>(`/events/${eventId}/challenges/criteria`, data).then((r) => r.data),
   },
 
   projects: {
-    list: (params?: Record<string, unknown>) =>
-      api.get<PaginatedResponse<Project>>('/projects', { params }).then((r) => r.data),
-    create: (data: CreateProjectRequest) =>
-      api.post<Project>('/projects', data).then((r) => r.data),
-    getById: (id: string) =>
-      api.get<Project>(`/projects/${id}`).then((r) => r.data),
-    update: (id: string, data: Partial<CreateProjectRequest>) =>
-      api.patch<Project>(`/projects/${id}`, data).then((r) => r.data),
-    submit: (id: string) =>
-      api.post<Project>(`/projects/${id}/submit`).then((r) => r.data),
+    list: (eventId: string, params?: Record<string, unknown>) =>
+      api.get<Project[]>(`/events/${eventId}/projects`, { params }).then((r) => r.data),
+    create: (eventId: string, data: CreateProjectRequest) =>
+      api.post<Project>(`/events/${eventId}/projects`, data).then((r) => r.data),
+    getById: (eventId: string, projectId: string) =>
+      api.get<Project>(`/events/${eventId}/projects/${projectId}`).then((r) => r.data),
+    update: (eventId: string, projectId: string, data: Partial<CreateProjectRequest>) =>
+      api.put<Project>(`/events/${eventId}/projects/${projectId}`, data).then((r) => r.data),
+    submit: (eventId: string, projectId: string) =>
+      api.post(`/events/${eventId}/projects/${projectId}/submit`).then((r) => r.data),
   },
 
   evaluations: {
-    submit: (data: SubmitEvaluationRequest) =>
-      api.post<Evaluation>('/evaluations', data).then((r) => r.data),
-    getProjectEvaluations: (projectId: string) =>
-      api.get<Evaluation[]>(`/projects/${projectId}/evaluations`).then((r) => r.data),
+    submit: (eventId: string, data: SubmitEvaluationRequest) =>
+      api.post<Evaluation>(`/events/${eventId}/evaluations`, data).then((r) => r.data),
+    getProjectEvaluations: (eventId: string, projectId: string) =>
+      api.get<Evaluation[]>(`/events/${eventId}/evaluations/projects/${projectId}`).then((r) => r.data),
     getRanking: (eventId: string) =>
-      api.get<RankingEntry[]>(`/events/${eventId}/ranking`).then((r) => r.data),
-    getMyEvaluations: (params?: Record<string, unknown>) =>
-      api.get<PaginatedResponse<Evaluation>>('/evaluations/me', { params }).then((r) => r.data),
+      api.get<RankingEntry[]>(`/events/${eventId}/evaluations/ranking`).then((r) => r.data),
+    getMyEvaluations: (eventId: string) =>
+      api.get<Evaluation[]>(`/events/${eventId}/evaluations/my`).then((r) => r.data),
   },
 
   ranking: {
@@ -209,28 +213,28 @@ const apiClient = {
   },
 
   certificates: {
-    verify: (hash: string) =>
-      api.get<Certificate>(`/certificates/verify/${hash}`).then((r) => r.data),
+    verify: (code: string) =>
+      api.get<Certificate>(`/certificates/verify/${code}`).then((r) => r.data),
     download: (id: string) =>
-      api.get(`/certificates/${id}/download`, { responseType: 'blob' }).then((r) => r.data),
+      api.get(`/certificates/download/${id}`, { responseType: 'blob' }).then((r) => r.data),
   },
 
   notifications: {
     list: (params?: Record<string, unknown>) =>
       api.get<PaginatedResponse<Notification>>('/notifications', { params }).then((r) => r.data),
     markRead: (id: string) =>
-      api.patch(`/notifications/${id}/read`).then((r) => r.data),
+      api.put(`/notifications/${id}/read`).then((r) => r.data),
     markAllRead: () =>
-      api.post('/notifications/read-all').then((r) => r.data),
+      api.put('/notifications/read-all').then((r) => r.data),
   },
 
   ai: {
-    ask: (data: AIAskRequest) =>
-      api.post<{ answer: string }>('/ai/ask', data).then((r) => r.data),
-    evaluateProject: (data: AIEvaluateRequest) =>
-      api.post<{ scores: Record<string, number>; feedback: string }>('/ai/evaluate', data).then((r) => r.data),
-    suggestTeams: (data: AISuggestTeamsRequest) =>
-      api.post<{ teams: { name: string; members: string[] }[] }>('/ai/suggest-teams', data).then((r) => r.data),
+    ask: (eventId: string, data: AIAskRequest) =>
+      api.post<{ answer: string }>(`/ai/events/${eventId}/ask`, data).then((r) => r.data),
+    evaluateProject: (projectId: string) =>
+      api.post<{ scores: Record<string, number>; feedback: string }>(`/ai/evaluate/${projectId}`).then((r) => r.data),
+    suggestTeams: (eventId: string) =>
+      api.post<{ teams: { members: string[]; combined_skills: string[] }[] }>(`/ai/events/${eventId}/suggest-teams`).then((r) => r.data),
   },
 
   dashboard: {

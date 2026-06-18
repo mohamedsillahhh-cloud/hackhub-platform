@@ -29,7 +29,7 @@ export default function EventsPage() {
   const { data, isLoading, error, refetch } = useEvents(params)
 
   const events = data?.items || []
-  const totalPages = data?.pages || 1
+  const totalPages = data?.page || 1
 
   return (
     <div className="min-h-screen py-8">

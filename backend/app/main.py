@@ -22,6 +22,9 @@ from app.api.v1.endpoints import (
     dashboard,
 )
 
+# Standalone routers (outside events prefix)
+standalone_teams = teams.standalone_router
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
@@ -43,6 +46,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(events.router, prefix=settings.API_V1_STR)
 app.include_router(teams.router, prefix=settings.API_V1_STR)
+app.include_router(standalone_teams, prefix=settings.API_V1_STR)
 app.include_router(challenges.router, prefix=settings.API_V1_STR)
 app.include_router(projects.router, prefix=settings.API_V1_STR)
 app.include_router(evaluations.router, prefix=settings.API_V1_STR)

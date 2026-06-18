@@ -3,69 +3,86 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api'
 import type { CreateTeamRequest } from '@/types'
 
-export function useTeams(params?: Record<string, unknown>) {
+export function useMyTeams() {
   return useQuery({
-    queryKey: ['teams', params],
-    queryFn: () => apiClient.teams.list(params),
+    queryKey: ['my-teams'],
+    queryFn: () => apiClient.teams.listMyTeams(),
   })
 }
 
-export function useTeam(id: string) {
+export function useTeams(eventId: string) {
   return useQuery({
-    queryKey: ['teams', id],
-    queryFn: () => apiClient.teams.getById(id),
-    enabled: !!id,
+    queryKey: ['teams', eventId],
+    queryFn: () => apiClient.teams.list(eventId),
+    enabled: !!eventId,
   })
 }
 
-export function useCreateTeam() {
+export function useTeam(eventId: string, teamId: string) {
+  return useQuery({
+    queryKey: ['teams', eventId, teamId],
+    queryFn: () => apiClient.teams.getById(eventId, teamId),
+    enabled: !!eventId && !!teamId,
+  })
+}
+
+export function useTeamById(teamId: string) {
+  return useQuery({
+    queryKey: ['team', teamId],
+    queryFn: () => apiClient.teams.getByIdStandalone(teamId),
+    enabled: !!teamId,
+  })
+}
+
+export function useCreateTeam(eventId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (data: CreateTeamRequest) => apiClient.teams.create(data),
+    mutationFn: (data: CreateTeamRequest) => apiClient.teams.create(eventId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teams'] })
+      queryClient.invalidateQueries({ queryKey: ['teams', eventId] })
+      queryClient.invalidateQueries({ queryKey: ['my-teams'] })
     },
   })
 }
 
-export function useInviteMember() {
+export function useInviteMember(eventId: string, teamId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ teamId, emailOrUsername }: { teamId: string; emailOrUsername: string }) =>
-      apiClient.teams.invite(teamId, emailOrUsername),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['teams', variables.teamId] })
-    },
-  })
-}
-
-export function useJoinTeam() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (inviteCode: string) => apiClient.teams.join(inviteCode),
+    mutationFn: (userId: string) => apiClient.teams.invite(eventId, teamId, userId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teams'] })
+      queryClient.invalidateQueries({ queryKey: ['teams', eventId, teamId] })
     },
   })
 }
 
-export function useLeaveTeam() {
+export function useJoinTeam(eventId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (teamId: string) => apiClient.teams.leave(teamId),
+    mutationFn: (inviteCode: string) => apiClient.teams.join(eventId, inviteCode),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['teams'] })
+      queryClient.invalidateQueries({ queryKey: ['teams', eventId] })
+      queryClient.invalidateQueries({ queryKey: ['my-teams'] })
     },
   })
 }
 
-export function useRemoveMember() {
+export function useRemoveMember(eventId: string, teamId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ teamId, userId }: { teamId: string; userId: string }) =>
-      apiClient.teams.removeMember(teamId, userId),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['teams', variables.teamId] })
+    mutationFn: (memberId: string) => apiClient.teams.removeMember(eventId, teamId, memberId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams', eventId, teamId] })
+    },
+  })
+}
+
+export function useLeaveTeam(eventId: string, teamId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiClient.teams.leave(eventId, teamId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams', eventId] })
+      queryClient.invalidateQueries({ queryKey: ['my-teams'] })
     },
   })
 }

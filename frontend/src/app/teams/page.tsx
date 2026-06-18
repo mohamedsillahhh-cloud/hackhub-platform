@@ -1,30 +1,25 @@
 'use client'
 import { motion } from 'framer-motion'
-import { Users, Plus } from 'lucide-react'
+import { Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TeamCard } from '@/components/shared/team-card'
 import { LoadingState } from '@/components/ui/loading-state'
 import { ErrorState } from '@/components/ui/error-state'
 import { EmptyState } from '@/components/ui/empty-state'
-import { useTeams } from '@/hooks/useTeams'
+import { useMyTeams } from '@/hooks/useTeams'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 
 export default function TeamsPage() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
-  const { data, isLoading, error, refetch } = useTeams(
-    user ? { user_id: user.id } : undefined
-  )
+  const { data: teams, isLoading, error, refetch } = useMyTeams()
 
   if (authLoading) return <LoadingState className="min-h-[calc(100vh-4rem)]" />
   if (!isAuthenticated) {
     router.push('/auth/login')
     return null
   }
-
-  const teams = data?.items || []
 
   return (
     <div className="min-h-screen py-8">
@@ -56,7 +51,7 @@ export default function TeamsPage() {
             </div>
           ) : error ? (
             <ErrorState message="Failed to load teams" onRetry={() => refetch()} />
-          ) : teams.length === 0 ? (
+          ) : !teams || teams.length === 0 ? (
             <EmptyState
               icon={<Users className="h-16 w-16" />}
               title="No teams yet"

@@ -10,18 +10,16 @@ import type { CreateEventRequest } from '@/types'
 const eventSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
-  short_description: z.string().optional(),
-  cover_image_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+  cover_image: z.string().url('Must be a valid URL').optional().or(z.literal('')),
   start_date: z.string().min(1, 'Start date is required'),
   end_date: z.string().min(1, 'End date is required'),
-  registration_deadline: z.string().optional(),
   location: z.string().optional(),
-  is_remote: z.boolean().default(false),
-  max_participants: z.coerce.number().min(1).optional(),
+  is_online: z.boolean().default(false),
   max_team_size: z.coerce.number().min(1).default(4),
+  min_team_size: z.coerce.number().min(1).default(1),
   prizes: z.string().optional(),
   sponsors: z.string().optional(),
-  rules: z.string().optional(),
+  regulations: z.string().optional(),
 })
 
 type EventFormData = z.infer<typeof eventSchema>
@@ -39,40 +37,41 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
     formState: { errors },
     watch,
     setValue,
-  } = useForm<EventFormData>({
+  } = useForm({
     resolver: zodResolver(eventSchema),
     defaultValues: {
       title: initialData?.title || '',
       description: initialData?.description || '',
-      short_description: initialData?.short_description || '',
-      cover_image_url: initialData?.cover_image_url || '',
+      cover_image: initialData?.cover_image || '',
       start_date: initialData?.start_date || '',
       end_date: initialData?.end_date || '',
-      registration_deadline: initialData?.registration_deadline || '',
       location: initialData?.location || '',
-      is_remote: initialData?.is_remote || false,
-      max_participants: initialData?.max_participants,
+      is_online: initialData?.is_online || false,
       max_team_size: initialData?.max_team_size || 4,
-      prizes: initialData?.prizes || '',
-      sponsors: initialData?.sponsors || '',
-      rules: initialData?.rules || '',
+      min_team_size: initialData?.min_team_size || 1,
+      prizes: typeof initialData?.prizes === 'string' ? initialData.prizes : '',
+      sponsors: typeof initialData?.sponsors === 'string' ? initialData.sponsors : '',
+      regulations: initialData?.regulations || '',
     },
   })
 
-  const isRemote = watch('is_remote')
+  const isOnline = watch('is_online')
 
   const handleFormSubmit = async (data: EventFormData) => {
-    const payload: CreateEventRequest = {
-      ...data,
-      cover_image_url: data.cover_image_url || undefined,
-      registration_deadline: data.registration_deadline || undefined,
-      location: isRemote ? undefined : data.location,
-      max_participants: data.max_participants || undefined,
-      prizes: data.prizes || undefined,
-      sponsors: data.sponsors || undefined,
-      rules: data.rules || undefined,
-    }
-    await onSubmit(payload)
+    await onSubmit({
+      title: data.title,
+      description: data.description,
+      cover_image: data.cover_image || undefined,
+      start_date: data.start_date,
+      end_date: data.end_date,
+      location: isOnline ? undefined : data.location,
+      is_online: data.is_online,
+      max_team_size: data.max_team_size,
+      min_team_size: data.min_team_size,
+      prizes: data.prizes ? { description: data.prizes } : undefined,
+      sponsors: data.sponsors ? { list: data.sponsors } : undefined,
+      regulations: data.regulations || undefined,
+    })
   }
 
   return (
@@ -101,18 +100,10 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
         </div>
         <div className="md:col-span-2">
           <Input
-            label="Short Description"
-            placeholder="Brief description for cards"
-            error={errors.short_description?.message}
-            {...register('short_description')}
-          />
-        </div>
-        <div className="md:col-span-2">
-          <Input
             label="Cover Image URL"
             placeholder="https://example.com/image.jpg"
-            error={errors.cover_image_url?.message}
-            {...register('cover_image_url')}
+            error={errors.cover_image?.message}
+            {...register('cover_image')}
           />
         </div>
         <Input
@@ -127,20 +118,14 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
           error={errors.end_date?.message}
           {...register('end_date')}
         />
-        <Input
-          label="Registration Deadline"
-          type="datetime-local"
-          error={errors.registration_deadline?.message}
-          {...register('registration_deadline')}
-        />
         <div className="flex items-center gap-2 pt-6">
           <Switch
-            checked={isRemote}
-            onCheckedChange={(checked) => setValue('is_remote', checked)}
+            checked={isOnline}
+            onCheckedChange={(checked) => setValue('is_online', checked)}
           />
-          <label className="text-sm font-medium">Remote Event</label>
+          <label className="text-sm font-medium">Online Event</label>
         </div>
-        {!isRemote && (
+        {!isOnline && (
           <Input
             label="Location"
             placeholder="City, Venue"
@@ -149,11 +134,16 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
           />
         )}
         <Input
-          label="Max Participants"
+          label="Max Team Size"
           type="number"
-          placeholder="Leave empty for unlimited"
-          error={errors.max_participants?.message}
-          {...register('max_participants')}
+          error={errors.max_team_size?.message}
+          {...register('max_team_size')}
+        />
+        <Input
+          label="Min Team Size"
+          type="number"
+          error={errors.min_team_size?.message}
+          {...register('min_team_size')}
         />
         <Input
           label="Max Team Size"
@@ -181,11 +171,11 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
         </div>
         <div className="md:col-span-2">
           <div className="space-y-1">
-            <label className="text-sm font-medium">Rules</label>
+            <label className="text-sm font-medium">Regulations</label>
             <textarea
               className="flex min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              placeholder="Event rules..."
-              {...register('rules')}
+              placeholder="Event regulations..."
+              {...register('regulations')}
             />
           </div>
         </div>

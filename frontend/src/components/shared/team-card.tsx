@@ -43,14 +43,14 @@ export function TeamCard({ team, index = 0 }: TeamCardProps) {
             )}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Users className="h-4 w-4" />
-              <span>{team.member_count || team.members?.length || 0} members</span>
+              <span>{team.members?.length || 0} members</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex -space-x-2">
                 {displayMembers.map((member) => (
                   <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
                     <AvatarFallback className="text-xs">
-                      {generateInitials(member.user?.full_name || 'U')}
+                      {generateInitials(member.user.full_name)}
                     </AvatarFallback>
                   </Avatar>
                 ))}

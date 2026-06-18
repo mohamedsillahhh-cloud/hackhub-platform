@@ -20,9 +20,9 @@ import type { CreateEventRequest } from '@/types'
 
 const statusStyles: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
-  upcoming: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  completed: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+  published: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  in_progress: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  closed: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
   cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 }
 
@@ -113,8 +113,7 @@ export default function ManageEventsPage() {
                           </div>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span>{formatDate(event.start_date, 'MMM d')} - {formatDate(event.end_date, 'MMM d, yyyy')}</span>
-                            <span>{event.participant_count || 0} participants</span>
-                            <span>{event.team_count || 0} teams</span>
+                            <span>{event.is_online ? 'Online' : event.location || 'In-Person'}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-4">

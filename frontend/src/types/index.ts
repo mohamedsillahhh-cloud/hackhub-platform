@@ -1,28 +1,60 @@
+// =============================================================================
+// Enums que correspondem ao backend
+// =============================================================================
+
 export enum EventStatus {
   DRAFT = 'draft',
-  UPCOMING = 'upcoming',
-  ACTIVE = 'active',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
+  PUBLISHED = 'published',
+  IN_PROGRESS = 'in_progress',
+  CLOSED = 'closed',
+}
+
+export enum UserRole {
+  ADMIN = 'admin',
+  ORGANIZER = 'organizer',
+  JUDGE = 'judge',
+  PARTICIPANT = 'participant',
 }
 
 export enum TeamMemberRole {
   LEADER = 'leader',
-  CO_LEADER = 'co_leader',
   MEMBER = 'member',
 }
 
-export enum EvaluationStatus {
-  PENDING = 'pending',
-  IN_PROGRESS = 'in_progress',
-  COMPLETED = 'completed',
+export enum ProjectStatus {
+  DRAFT = 'draft',
+  SUBMITTED = 'submitted',
+  FINALIZED = 'finalized',
 }
+
+export enum CertificateType {
+  PARTICIPATION = 'participation',
+  FINALIST = 'finalist',
+  WINNER = 'winner',
+  JUDGE = 'judge',
+  ORGANIZER = 'organizer',
+}
+
+export enum NotificationCategory {
+  TEAM_INVITE = 'team_invite',
+  REGISTRATION_APPROVED = 'registration_approved',
+  NEW_CHALLENGE = 'new_challenge',
+  RESULT_PUBLISHED = 'result_published',
+}
+
+// =============================================================================
+// Interfaces principais
+// =============================================================================
 
 export interface User {
   id: string;
   email: string;
   username: string;
   full_name: string;
+  hashed_password?: string;
+  role: UserRole;
+  is_active: boolean;
+  is_verified: boolean;
   avatar_url?: string;
   bio?: string;
   university?: string;
@@ -32,9 +64,10 @@ export interface User {
   github_url?: string;
   linkedin_url?: string;
   portfolio_url?: string;
-  role: 'participant' | 'organizer' | 'admin';
-  is_active: boolean;
-  is_verified: boolean;
+  experience_level?: string;
+  preferred_languages: string[];
+  preferred_frameworks: string[];
+  interest_areas: string[];
   created_at: string;
   updated_at: string;
 }
@@ -42,26 +75,22 @@ export interface User {
 export interface Event {
   id: string;
   title: string;
-  slug: string;
-  description: string;
-  short_description?: string;
-  cover_image_url?: string;
-  status: EventStatus;
+  description?: string;
+  cover_image?: string;
   start_date: string;
   end_date: string;
-  registration_deadline?: string;
   location?: string;
-  is_remote: boolean;
-  max_participants?: number;
+  is_online: boolean;
+  status: EventStatus;
+  regulations?: string;
+  schedule?: Record<string, unknown>;
+  sponsors?: Record<string, unknown>;
+  prizes?: Record<string, unknown>;
+  faq?: Record<string, unknown>;
   max_team_size: number;
-  prizes?: string;
-  sponsors?: string;
-  rules?: string;
+  min_team_size: number;
   organizer_id: string;
   organizer?: User;
-  participant_count?: number;
-  team_count?: number;
-  project_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -69,20 +98,14 @@ export interface Event {
 export interface Team {
   id: string;
   name: string;
-  slug: string;
   description?: string;
-  invite_code: string;
   event_id: string;
   event?: Event;
   leader_id: string;
   leader?: User;
   members: TeamMember[];
-  project?: Project;
-  member_count?: number;
   created_at: string;
   updated_at: string;
-  is_registered?: boolean;
-  registration_status?: 'pending' | 'approved' | 'rejected';
 }
 
 export interface TeamMember {
@@ -91,22 +114,21 @@ export interface TeamMember {
   user_id: string;
   user: User;
   role: TeamMemberRole;
+  status: 'pending' | 'accepted' | 'rejected';
+  invited_by?: string;
   created_at: string;
 }
 
 export interface Challenge {
   id: string;
   title: string;
-  description: string;
+  description?: string;
+  requirements?: string;
+  documentation_url?: string;
+  event_id: string;
   category_id?: string;
   category?: ChallengeCategory;
-  event_id: string;
-  event?: Event;
-  criteria: Criterion[];
-  max_score: number;
-  order: number;
   created_at: string;
-  updated_at: string;
 }
 
 export interface ChallengeCategory {
@@ -114,7 +136,9 @@ export interface ChallengeCategory {
   name: string;
   description?: string;
   event_id: string;
+  order: number;
   challenges?: Challenge[];
+  criteria?: Criterion[];
   created_at: string;
 }
 
@@ -122,58 +146,48 @@ export interface Criterion {
   id: string;
   name: string;
   description?: string;
+  challenge_category_id: string;
   max_score: number;
   weight: number;
-  challenge_id: string;
   created_at: string;
 }
 
 export interface Project {
   id: string;
-  name: string;
-  description: string;
-  github_url?: string;
-  demo_url?: string;
-  video_url?: string;
-  tech_stack: string[];
   team_id: string;
   team?: Team;
   event_id: string;
-  event?: Event;
   challenge_id?: string;
-  challenge?: Challenge;
-  status: 'draft' | 'submitted' | 'evaluated' | 'disqualified';
-  score?: number;
-  rank?: number;
-  evaluations?: Evaluation[];
+  name: string;
+  description: string;
+  github_url?: string;
+  demo_video_url?: string;
+  presentation_url?: string;
+  tech_stack: string[];
+  status: ProjectStatus;
+  submitted_at?: string;
   created_at: string;
   updated_at: string;
-  submitted_at?: string;
 }
 
 export interface Evaluation {
   id: string;
-  evaluator_id: string;
-  evaluator?: User;
   project_id: string;
   project?: Project;
-  challenge_id: string;
-  challenge?: Challenge;
-  scores: EvaluationScore[];
+  judge_id: string;
+  judge?: User;
+  comment?: string;
   total_score: number;
-  comments?: string;
-  status: EvaluationStatus;
-  created_at: string;
-  updated_at: string;
+  scores: EvaluationScore[];
+  submitted_at: string;
 }
 
 export interface EvaluationScore {
   id: string;
+  evaluation_id: string;
   criterion_id: string;
   criterion?: Criterion;
-  evaluation_id: string;
   score: number;
-  comment?: string;
   created_at: string;
 }
 
@@ -183,25 +197,30 @@ export interface Certificate {
   user?: User;
   event_id: string;
   event?: Event;
-  project_id?: string;
-  project?: Project;
-  type: 'participation' | 'winner' | 'finalist';
-  certificate_url: string;
-  certificate_hash: string;
+  type: CertificateType;
+  template_name: string;
+  qr_code_url?: string;
+  verification_code: string;
+  digital_signature?: string;
   issued_at: string;
-  created_at: string;
 }
 
 export interface Notification {
   id: string;
   user_id: string;
   type: string;
+  category: NotificationCategory;
   title: string;
   message: string;
   data?: Record<string, unknown>;
   read: boolean;
-  created_at: string;
+  sent_at: string;
+  read_at?: string;
 }
+
+// =============================================================================
+// Auth
+// =============================================================================
 
 export interface AuthTokens {
   access_token: string;
@@ -209,36 +228,52 @@ export interface AuthTokens {
   token_type: string;
 }
 
+// =============================================================================
+// Pagination
+// =============================================================================
+
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;
   page: number;
   size: number;
-  pages: number;
 }
+
+// =============================================================================
+// Ranking
+// =============================================================================
 
 export interface RankingEntry {
   position: number;
-  team: Team;
-  project?: Project;
+  team_id?: string;
+  team_name?: string;
+  project_id?: string;
+  project_name?: string;
   total_score: number;
   scores: Record<string, number>;
 }
 
+// =============================================================================
+// Dashboard
+// =============================================================================
+
 export interface DashboardStats {
   total_users: number;
+  active_participants: number;
   total_events: number;
-  active_events: number;
-  total_teams: number;
   total_projects: number;
-  total_participants: number;
-  users_by_role: Record<string, number>;
-  events_by_status: Record<string, number>;
-  projects_by_status: Record<string, number>;
-  recent_events: Event[];
+  total_teams: number;
+  universities: number;
+  countries: number;
   top_technologies: { name: string; count: number }[];
-  participants_by_university: { university: string; count: number }[];
-  users_over_time: { date: string; count: number }[];
+  events_by_status: Record<string, number>;
+  recent_events: Array<{
+    id: string;
+    title: string;
+    status: string;
+    start_date: string;
+    end_date: string;
+  }>;
 }
 
 export interface EventDashboardStats {
@@ -246,10 +281,12 @@ export interface EventDashboardStats {
   total_projects: number;
   total_participants: number;
   projects_submitted: number;
-  projects_evaluated: number;
-  pending_evaluations: number;
-  top_teams: RankingEntry[];
+  ranking: RankingEntry[];
 }
+
+// =============================================================================
+// Request DTOs
+// =============================================================================
 
 export interface LoginRequest {
   email: string;
@@ -261,72 +298,61 @@ export interface RegisterRequest {
   username: string;
   full_name: string;
   password: string;
-  confirm_password: string;
 }
 
 export interface CreateEventRequest {
   title: string;
-  description: string;
-  short_description?: string;
-  cover_image_url?: string;
+  description?: string;
+  cover_image?: string;
   start_date: string;
   end_date: string;
-  registration_deadline?: string;
   location?: string;
-  is_remote: boolean;
-  max_participants?: number;
-  max_team_size: number;
-  prizes?: string;
-  sponsors?: string;
-  rules?: string;
+  is_online?: boolean;
+  regulations?: string;
+  sponsors?: Record<string, unknown>;
+  prizes?: Record<string, unknown>;
+  faq?: Record<string, unknown>;
+  max_team_size?: number;
+  min_team_size?: number;
 }
 
 export interface CreateTeamRequest {
   name: string;
   description?: string;
-  event_id: string;
 }
 
 export interface CreateProjectRequest {
   name: string;
   description: string;
   github_url?: string;
-  demo_url?: string;
-  video_url?: string;
+  demo_video_url?: string;
+  presentation_url?: string;
   tech_stack: string[];
-  team_id: string;
-  event_id: string;
   challenge_id?: string;
 }
 
 export interface CreateChallengeRequest {
   title: string;
-  description: string;
+  description?: string;
+  requirements?: string;
+  documentation_url?: string;
   category_id?: string;
-  event_id: string;
-  criteria: Omit<Criterion, 'id' | 'challenge_id' | 'created_at'>[];
-  max_score: number;
-  order: number;
 }
 
 export interface SubmitEvaluationRequest {
   project_id: string;
-  challenge_id: string;
-  scores: { criterion_id: string; score: number; comment?: string }[];
-  comments?: string;
+  scores: { criterion_id: string; score: number }[];
+  comment?: string;
 }
 
 export interface AIAskRequest {
   question: string;
-  event_id?: string;
 }
 
 export interface AIEvaluateRequest {
-  project_description: string;
-  criteria: { name: string; max_score: number }[];
+  project_description?: string;
 }
 
 export interface AISuggestTeamsRequest {
   event_id: string;
-  participant_ids: string[];
 }
