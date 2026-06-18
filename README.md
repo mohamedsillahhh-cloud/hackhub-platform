@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/sillassantos/hackhub-platform/main/assets/logo.svg" alt="HackHub Logo" width="120" height="120" />
+  <img src="https://raw.githubusercontent.com/mohamedsillahhh-cloud/hackhub-platform/main/assets/logo.svg" alt="HackHub Logo" width="120" height="120" />
   <h1>HackHub</h1>
   <p><strong>The ultimate open-source platform for hackathons, competitions, and innovation events.</strong></p>
 
@@ -204,7 +204,7 @@ HackHub follows **Clean Architecture** principles with clear separation of conce
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/hackhub-platform.git
+git clone https://github.com/mohamedsillahhh-cloud/hackhub-platform.git
 cd hackhub-platform
 
 # Copy environment files
@@ -269,13 +269,18 @@ npm run dev
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
 | `SECRET_KEY` | JWT signing key | (change in production) |
 | `ENVIRONMENT` | Runtime environment | `development` |
-| `SMTP_HOST` | SMTP server for emails | `smtp.mailtrap.io` |
+| `SMTP_SERVER` | SMTP server for emails | `smtp.gmail.com` |
 | `SMTP_PORT` | SMTP port | `587` |
-| `SMTP_USER` | SMTP username | |
+| `SMTP_USERNAME` | SMTP username | |
 | `SMTP_PASSWORD` | SMTP password | |
-| `CORS_ORIGINS` | Allowed CORS origins | `http://localhost:3000` |
+| `SMTP_FROM_EMAIL` | Sender email address | `noreply@hackhub.com` |
+| `CORS_ORIGINS` | Allowed CORS origins | `http://localhost:3000,http://localhost:5173` |
 | `OPENAI_API_KEY` | OpenAI API key (for AI features) | |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token | |
+| `AI_RATE_LIMIT_ASK` | Rate limit for AI assistant | `20/minute` |
+| `AI_RATE_LIMIT_EVALUATE` | Rate limit for AI evaluation | `5/minute` |
+| `AI_RATE_LIMIT_SUGGEST` | Rate limit for team suggestions | `3/minute` |
+| `AI_DAILY_TOKEN_LIMIT` | Max OpenAI tokens per user/day | `100000` |
 
 #### Frontend (`frontend/.env.local`)
 
@@ -300,7 +305,8 @@ The API is fully documented with Swagger/OpenAPI:
 | **Authentication** | | |
 | POST | `/api/v1/auth/register` | Register new user |
 | POST | `/api/v1/auth/login` | Login |
-| POST | `/api/v1/auth/refresh` | Refresh access token |
+| POST | `/api/v1/auth/refresh` | Refresh access token (cookie‑based) |
+| POST | `/api/v1/auth/logout` | Logout and clear cookies |
 | GET | `/api/v1/auth/me` | Get current user |
 | PUT | `/api/v1/auth/me` | Update profile |
 | **Events** | | |
@@ -371,31 +377,23 @@ HackHub implements industry-standard security practices:
 cd backend
 pytest tests/ -v --cov=app
 
-# Run frontend tests
+# Frontend type checking
 cd frontend
-npm test
+npx tsc --noEmit
 ```
 
 ---
 
 ## Contributing
 
-We welcome contributions! Please follow these steps:
+Contributions are welcome! See [`CONTRIBUTING.md`](CONTRIBUTING.md) for a complete guide covering:
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-### Development Guidelines
-
-- Follow **Clean Architecture** principles
-- Write tests for new features
-- Use **TypeScript** strictly on the frontend
-- Use **type hints** on the backend
-- Run linting before committing
-- Document public APIs and functions
+- Local development setup
+- Commit conventions (Conventional Commits)
+- Branching strategy
+- PR checklist (tests, linting, migrations)
+- Code style guidelines
+- Architecture overview
 
 ---
 
@@ -407,17 +405,17 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ## Acknowledgments
 
+- Developed with ❤️ by [Mohamed Sillah](https://github.com/mohamedsillahhh-cloud)
 - Inspired by platforms like Linear, Notion, and Stripe
 - Built with the best open-source tools from the Python and JavaScript ecosystems
-- Community-driven and maintained
 
 ---
 
 <div align="center">
-  <p>Made with ❤️ by the HackHub Community</p>
+  <p></p>
   <p>
-    <a href="https://github.com/sillassantos/hackhub-platform/issues">Report Bug</a> •
-    <a href="https://github.com/sillassantos/hackhub-platform/discussions">Discussions</a> •
-    <a href="https://github.com/sillassantos/hackhub-platform/releases">Releases</a>
+  <a href="https://github.com/mohamedsillahhh-cloud/hackhub-platform/issues">Report Bug</a> •
+  <a href="https://github.com/mohamedsillahhh-cloud/hackhub-platform/discussions">Discussions</a> •
+  <a href="https://github.com/mohamedsillahhh-cloud/hackhub-platform/releases">Releases</a>
   </p>
 </div>
