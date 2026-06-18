@@ -405,7 +405,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ## Acknowledgments
 
-- Developed with ❤️ by [Mohamed Sillah](https://github.com/mohamedsillahhh-cloud)
+- Developed by [Mohamed Sillah](https://github.com/mohamedsillahhh-cloud)
 - Inspired by platforms like Linear, Notion, and Stripe
 - Built with the best open-source tools from the Python and JavaScript ecosystems
 
