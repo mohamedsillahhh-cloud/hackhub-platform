@@ -280,4 +280,4 @@ PR checklist before submitting:
 
 ---
 
-*Developed with ❤️ by [Mohamed Sillah](https://github.com/mohamedsillahhh-cloud)*
+*Developed by [Mohamed Sillah](https://github.com/mohamedsillahhh-cloud)*
