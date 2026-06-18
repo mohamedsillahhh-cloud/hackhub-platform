@@ -41,7 +41,7 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
 
-    if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
+    if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/auth/refresh' && originalRequest.url !== '/auth/me') {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
@@ -57,7 +57,7 @@ api.interceptors.response.use(
         return api(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError)
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth/')) {
           window.location.href = '/auth/login'
         }
         return Promise.reject(refreshError)

@@ -1,4 +1,5 @@
 'use client'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Users, Calendar, FolderKanban, UserCheck, TrendingUp, Plus } from 'lucide-react'
@@ -20,11 +21,14 @@ export default function DashboardPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const { data: stats, isLoading, error, refetch } = useDashboardStats()
 
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/auth/login')
+    }
+  }, [authLoading, isAuthenticated, router])
+
   if (authLoading) return <LoadingState className="min-h-[calc(100vh-4rem)]" />
-  if (!isAuthenticated) {
-    router.push('/auth/login')
-    return null
-  }
+  if (!isAuthenticated) return null
 
   if (isLoading) return <LoadingState className="min-h-[calc(100vh-4rem)]" />
   if (error) return <ErrorState message="Failed to load dashboard" onRetry={() => refetch()} className="min-h-[calc(100vh-4rem)]" />
