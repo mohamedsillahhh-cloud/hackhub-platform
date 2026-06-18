@@ -65,7 +65,7 @@ class CertificateService:
             qr_code_url=qr_code_url,
             verification_code=verification_code,
             digital_signature=digital_signature,
-            metadata={
+            extra_data={
                 "user_name": user.full_name or user.username,
                 "event_title": event.title,
                 "event_date": event.start_date.isoformat() if event.start_date else None,
@@ -99,3 +99,79 @@ class CertificateService:
             select(Certificate).where(Certificate.user_id == user_id).order_by(Certificate.issued_at.desc())
         )
         return list(result.scalars().all())
+
+    async def generate_all_certificates(self, event_id: UUID) -> None:
+        from sqlalchemy import select
+        from app.models.project import Project, ProjectStatus
+        from app.models.team import Team, TeamMember
+
+        event = await self.event_repo.get(event_id)
+        if not event:
+            return
+
+        projects_result = await self.db.execute(
+            select(Project).where(Project.event_id == event_id, Project.status == ProjectStatus.SUBMITTED)
+        )
+        projects = projects_result.scalars().all()
+
+        user_ids_with_projects = set()
+        for project in projects:
+            team_result = await self.db.execute(
+                select(TeamMember).where(TeamMember.team_id == project.team_id, TeamMember.status == "accepted")
+            )
+            members = team_result.scalars().all()
+            for member in members:
+                user_ids_with_projects.add(member.user_id)
+                existing = await self.db.execute(
+                    select(Certificate).where(
+                        Certificate.user_id == member.user_id,
+                        Certificate.event_id == event_id,
+                        Certificate.type == CertificateType.PARTICIPATION,
+                    )
+                )
+                if not existing.scalar_one_or_none():
+                    await self.generate_certificate(member.user_id, event_id, CertificateType.PARTICIPATION)
+
+        from app.services.ranking_service import RankingService
+        rsvc = RankingService(self.db)
+        entries = await rsvc.get_ranking(event_id)
+        top_50_pct = max(1, len(entries) // 2)
+        top_3 = entries[:3]
+
+        for entry in entries[:top_50_pct]:
+            team_id = entry.get("team_id")
+            if not team_id:
+                continue
+            members = await self.db.execute(
+                select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.status == "accepted")
+            )
+            for member in members.scalars().all():
+                existing = await self.db.execute(
+                    select(Certificate).where(
+                        Certificate.user_id == member.user_id,
+                        Certificate.event_id == event_id,
+                        Certificate.type == CertificateType.FINALIST,
+                    )
+                )
+                if not existing.scalar_one_or_none():
+                    await self.generate_certificate(member.user_id, event_id, CertificateType.FINALIST)
+
+        for entry in top_3:
+            team_id = entry.get("team_id")
+            if not team_id:
+                continue
+            members = await self.db.execute(
+                select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.status == "accepted")
+            )
+            for member in members.scalars().all():
+                existing = await self.db.execute(
+                    select(Certificate).where(
+                        Certificate.user_id == member.user_id,
+                        Certificate.event_id == event_id,
+                        Certificate.type == CertificateType.WINNER,
+                    )
+                )
+                if not existing.scalar_one_or_none():
+                    await self.generate_certificate(member.user_id, event_id, CertificateType.WINNER)
+
+        await self.generate_certificate(event.organizer_id, event_id, CertificateType.ORGANIZER)

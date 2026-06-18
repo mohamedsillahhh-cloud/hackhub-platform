@@ -2,7 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import type {
   LoginRequest, RegisterRequest, User, Event, Team, TeamMember,
   Challenge, ChallengeCategory, Criterion, Project, Evaluation,
-  Certificate, Notification, AuthTokens,
+  Certificate, Notification,
   PaginatedResponse, RankingEntry, DashboardStats, EventDashboardStats,
   CreateEventRequest, CreateTeamRequest, CreateProjectRequest,
   CreateChallengeRequest, SubmitEvaluationRequest, AIAskRequest,
@@ -16,17 +16,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-})
-
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  if (typeof window !== 'undefined') {
-    const tokens = localStorage.getItem('auth_tokens')
-    if (tokens) {
-      const parsed: AuthTokens = JSON.parse(tokens)
-      config.headers.Authorization = `Bearer ${parsed.access_token}`
-    }
-  }
-  return config
+  withCredentials: true,
 })
 
 let isRefreshing = false
@@ -35,12 +25,12 @@ let failedQueue: Array<{
   reject: (reason: unknown) => void
 }> = []
 
-const processQueue = (error: unknown, token: string | null = null) => {
+const processQueue = (error: unknown) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error)
     } else {
-      prom.resolve(token)
+      prom.resolve(undefined)
     }
   })
   failedQueue = []
@@ -51,37 +41,22 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
-        }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`
-          return api(originalRequest)
-        })
+        }).then(() => api(originalRequest))
       }
 
       originalRequest._retry = true
       isRefreshing = true
 
       try {
-        const tokens = localStorage.getItem('auth_tokens')
-        if (!tokens) throw new Error('No tokens')
-
-        const parsed: AuthTokens = JSON.parse(tokens)
-        const response = await axios.post(`${API_URL}/auth/refresh`, {
-          refresh_token: parsed.refresh_token,
-        })
-
-        const newTokens: AuthTokens = response.data
-        localStorage.setItem('auth_tokens', JSON.stringify(newTokens))
-        api.defaults.headers.common.Authorization = `Bearer ${newTokens.access_token}`
-        processQueue(null, newTokens.access_token)
-
+        await axios.post(`${API_URL}/auth/refresh`, {}, { withCredentials: true })
+        processQueue(null)
         return api(originalRequest)
       } catch (refreshError) {
-        processQueue(refreshError, null)
-        localStorage.removeItem('auth_tokens')
+        processQueue(refreshError)
         if (typeof window !== 'undefined') {
           window.location.href = '/auth/login'
         }
@@ -98,11 +73,13 @@ api.interceptors.response.use(
 const apiClient = {
   auth: {
     login: (data: LoginRequest) =>
-      api.post<AuthTokens>('/auth/login', data).then((r) => r.data),
+      api.post('/auth/login', data).then((r) => r.data),
     register: (data: RegisterRequest) =>
       api.post<User>('/auth/register', data).then((r) => r.data),
-    refresh: (refreshToken: string) =>
-      api.post<AuthTokens>('/auth/refresh', { refresh_token: refreshToken }).then((r) => r.data),
+    refresh: () =>
+      api.post('/auth/refresh').then((r) => r.data),
+    logout: () =>
+      api.post('/auth/logout').then((r) => r.data),
     verifyEmail: (token: string) =>
       api.post(`/auth/verify-email/${token}`).then((r) => r.data),
     resetPassword: (email: string) =>
@@ -213,10 +190,14 @@ const apiClient = {
   },
 
   certificates: {
+    list: () =>
+      api.get<Certificate[]>('/certificates/my').then((r) => r.data),
     verify: (code: string) =>
       api.get<Certificate>(`/certificates/verify/${code}`).then((r) => r.data),
     download: (id: string) =>
       api.get(`/certificates/download/${id}`, { responseType: 'blob' }).then((r) => r.data),
+    generate: (eventId: string) =>
+      api.post(`/certificates/events/${eventId}/generate`).then((r) => r.data),
   },
 
   notifications: {
@@ -242,6 +223,14 @@ const apiClient = {
       api.get<DashboardStats>('/dashboard/stats').then((r) => r.data),
     getEventStats: (eventId: string) =>
       api.get<EventDashboardStats>(`/dashboard/events/${eventId}/stats`).then((r) => r.data),
+    exportParticipants: (eventId: string, fmt: string = 'xlsx') =>
+      api.get(`/dashboard/events/${eventId}/export/participants?fmt=${fmt}`, { responseType: 'blob' }).then((r) => r.data),
+    exportProjects: (eventId: string, fmt: string = 'xlsx') =>
+      api.get(`/dashboard/events/${eventId}/export/projects?fmt=${fmt}`, { responseType: 'blob' }).then((r) => r.data),
+    exportRanking: (eventId: string, fmt: string = 'xlsx') =>
+      api.get(`/dashboard/events/${eventId}/export/ranking?fmt=${fmt}`, { responseType: 'blob' }).then((r) => r.data),
+    exportEvaluations: (eventId: string, fmt: string = 'xlsx') =>
+      api.get(`/dashboard/events/${eventId}/export/evaluations?fmt=${fmt}`, { responseType: 'blob' }).then((r) => r.data),
   },
 }
 

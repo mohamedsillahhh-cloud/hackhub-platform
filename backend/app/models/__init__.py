@@ -6,6 +6,7 @@ from app.models.project import Project, ProjectTechnology, ProjectStatus
 from app.models.evaluation import Evaluation, EvaluationScore
 from app.models.certificate import Certificate, CertificateType
 from app.models.notification import Notification, NotificationType, NotificationCategory
+from app.models.organization import Organization, OrganizationPlan
 
 __all__ = [
     "User", "UserRole",
@@ -16,4 +17,5 @@ __all__ = [
     "Evaluation", "EvaluationScore",
     "Certificate", "CertificateType",
     "Notification", "NotificationType", "NotificationCategory",
+    "Organization", "OrganizationPlan",
 ]

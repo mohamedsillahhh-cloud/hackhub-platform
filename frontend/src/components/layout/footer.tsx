@@ -79,7 +79,7 @@ export function Footer() {
             &copy; {new Date().getFullYear()} HackHub. All rights reserved.
           </p>
           <p className="text-sm text-muted-foreground flex items-center gap-1">
-            Made with <Heart className="h-4 w-4 text-red-500" /> by the HackHub Team
+            Developed with <Heart className="h-4 w-4 text-red-500" /> by <a href="https://github.com/mohamedsillahhh-cloud" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground hover:text-primary transition-colors">Mohamed Sillah</a>
           </p>
         </div>
       </div>

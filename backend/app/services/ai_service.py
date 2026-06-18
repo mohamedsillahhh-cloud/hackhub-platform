@@ -1,11 +1,20 @@
 from typing import List, Optional
 from uuid import UUID
+from datetime import date
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.repositories.event_repository import EventRepository
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
+
+
+try:
+    import redis.asyncio as aioredis
+    _redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+except Exception:
+    _redis = None
 
 
 class AIService:
@@ -15,7 +24,25 @@ class AIService:
         self.project_repo = ProjectRepository(db)
         self.user_repo = UserRepository(db)
 
-    async def _query_openai(self, system_prompt: str, user_message: str) -> str:
+    async def check_daily_token_limit(self, user_id: str) -> bool:
+        if _redis is None or not settings.AI_DAILY_TOKEN_LIMIT:
+            return True
+        today = date.today().isoformat()
+        key = f"ai:usage:{user_id}:{today}"
+        current = await _redis.get(key)
+        if current and int(current) >= settings.AI_DAILY_TOKEN_LIMIT:
+            return False
+        return True
+
+    async def track_token_usage(self, user_id: str, tokens: int) -> None:
+        if _redis is None:
+            return
+        today = date.today().isoformat()
+        key = f"ai:usage:{user_id}:{today}"
+        await _redis.incrby(key, tokens)
+        await _redis.expire(key, 86400)
+
+    async def _query_openai(self, system_prompt: str, user_message: str, user_id: str = "anonymous") -> str:
         if not settings.OPENAI_API_KEY:
             return "AI assistant is not configured. Please set OPENAI_API_KEY."
 
@@ -29,9 +56,11 @@ class AIService:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message},
                 ],
-                max_tokens=500,
+                max_tokens=1024,
                 temperature=0.7,
             )
+            tokens = response.usage.total_tokens if response.usage else 0
+            await self.track_token_usage(user_id, tokens)
             return response.choices[0].message.content or "No response generated."
         except Exception as e:
             return f"AI service error: {str(e)}"

@@ -34,10 +34,12 @@ class Event(Base):
     max_team_size: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
     min_team_size: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     organizer_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     organizer = relationship("User", lazy="selectin")
+    organization = relationship("Organization", back_populates="events", lazy="selectin")
     challenges = relationship("Challenge", back_populates="event", lazy="selectin", cascade="all, delete-orphan")
     teams = relationship("Team", back_populates="event", lazy="selectin", cascade="all, delete-orphan")
     projects = relationship("Project", back_populates="event", lazy="selectin", cascade="all, delete-orphan")

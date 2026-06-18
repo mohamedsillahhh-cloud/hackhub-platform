@@ -12,7 +12,7 @@ from app.core.security import (
 )
 from app.models.user import User, UserRole
 from app.repositories.user_repository import UserRepository
-from app.schemas.user import UserCreate, UserLogin, TokenResponse, UserUpdate
+from app.schemas.user import UserCreate, UserUpdate
 
 
 class AuthService:
@@ -57,7 +57,7 @@ class AuthService:
 
         return user
 
-    async def login(self, email: str, password: str) -> TokenResponse:
+    async def login(self, email: str, password: str) -> dict:
         user = await self.user_repo.get_by_email(email)
         if not user or not verify_password(password, user.hashed_password):
             raise HTTPException(
@@ -74,12 +74,9 @@ class AuthService:
         access_token = create_access_token(data={"sub": str(user.id)})
         refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
-        return TokenResponse(
-            access_token=access_token,
-            refresh_token=refresh_token,
-        )
+        return {"access_token": access_token, "refresh_token": refresh_token}
 
-    async def refresh_token(self, refresh_token_str: str) -> TokenResponse:
+    async def refresh_token(self, refresh_token_str: str) -> dict:
         payload = decode_token(refresh_token_str)
         if payload is None or payload.get("type") != "refresh":
             raise HTTPException(
@@ -98,10 +95,7 @@ class AuthService:
         access_token = create_access_token(data={"sub": str(user.id)})
         new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
-        return TokenResponse(
-            access_token=access_token,
-            refresh_token=new_refresh_token,
-        )
+        return {"access_token": access_token, "refresh_token": new_refresh_token}
 
     async def verify_email(self, token: str) -> None:
         payload = decode_token(token)

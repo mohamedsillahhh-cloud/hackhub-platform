@@ -45,3 +45,4 @@ class User(Base):
     evaluations = relationship("Evaluation", back_populates="judge", lazy="selectin")
     notifications = relationship("Notification", back_populates="user", lazy="selectin")
     certificates = relationship("Certificate", back_populates="user", lazy="selectin")
+    organizations = relationship("Organization", back_populates="owner", lazy="selectin")

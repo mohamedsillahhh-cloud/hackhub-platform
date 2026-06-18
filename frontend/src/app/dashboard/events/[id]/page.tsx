@@ -15,6 +15,7 @@ import { useEvent, useUpdateEvent, useChangeEventStatus } from '@/hooks/useEvent
 import { useRanking } from '@/hooks/useRanking'
 import { useAuth } from '@/hooks/useAuth'
 import { useEventStats } from '@/hooks/useDashboard'
+import { apiClient } from '@/lib/api'
 import { useProjects } from '@/hooks/useProjects'
 import { ProjectCard } from '@/components/shared/project-card'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -142,6 +143,21 @@ export default function ManageEventDetailPage() {
                 Edit Event
               </Button>
             </Link>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-8">
+            <Button variant="outline" size="sm" onClick={() => window.open(`/api/v1/dashboard/events/${id}/export/participants?fmt=xlsx`)}>
+              Export Participants
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => window.open(`/api/v1/dashboard/events/${id}/export/ranking?fmt=xlsx`)}>
+              Export Ranking
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => window.open(`/api/v1/dashboard/events/${id}/export/evaluations?fmt=xlsx`)}>
+              Export Evaluations
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => window.open(`/api/v1/dashboard/events/${id}/export/projects?fmt=xlsx`)}>
+              Export Projects
+            </Button>
           </div>
 
           <Tabs defaultValue="overview">

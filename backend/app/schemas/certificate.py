@@ -13,6 +13,6 @@ class CertificateResponse(BaseModel):
     verification_code: str
     digital_signature: Optional[str] = None
     issued_at: datetime
-    metadata: Optional[Any] = None
+    extra_data: Optional[Any] = None
 
     model_config = {"from_attributes": True}

@@ -203,6 +203,7 @@ export interface Certificate {
   verification_code: string;
   digital_signature?: string;
   issued_at: string;
+  extra_data?: Record<string, unknown>;
 }
 
 export interface Notification {

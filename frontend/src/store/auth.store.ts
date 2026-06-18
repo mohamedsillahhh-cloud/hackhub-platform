@@ -1,15 +1,14 @@
 import { create } from 'zustand'
-import type { User, AuthTokens, LoginRequest, RegisterRequest } from '@/types'
+import type { User, LoginRequest, RegisterRequest } from '@/types'
 import { apiClient } from '@/lib/api'
 
 interface AuthState {
   user: User | null
-  tokens: AuthTokens | null
   isLoading: boolean
   isAuthenticated: boolean
   login: (data: LoginRequest) => Promise<void>
   register: (data: RegisterRequest) => Promise<User>
-  logout: () => void
+  logout: () => Promise<void>
   refreshToken: () => Promise<void>
   updateProfile: (data: Partial<User>) => Promise<void>
   setUser: (user: User) => void
@@ -18,14 +17,12 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
-  tokens: null,
   isLoading: true,
   isAuthenticated: false,
 
   login: async (data: LoginRequest) => {
-    const tokens = await apiClient.auth.login(data)
-    localStorage.setItem('auth_tokens', JSON.stringify(tokens))
-    set({ tokens, isAuthenticated: true })
+    await apiClient.auth.login(data)
+    set({ isAuthenticated: true })
     const user = await apiClient.auth.getMe()
     set({ user })
   },
@@ -35,20 +32,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return user
   },
 
-  logout: () => {
-    localStorage.removeItem('auth_tokens')
-    set({ user: null, tokens: null, isAuthenticated: false })
+  logout: async () => {
+    try {
+      await apiClient.auth.logout()
+    } catch {
+      // ignore server errors on logout
+    }
+    set({ user: null, isAuthenticated: false })
   },
 
   refreshToken: async () => {
     try {
-      const { tokens } = get()
-      if (!tokens?.refresh_token) throw new Error('No refresh token')
-      const newTokens = await apiClient.auth.refresh(tokens.refresh_token)
-      localStorage.setItem('auth_tokens', JSON.stringify(newTokens))
-      set({ tokens: newTokens })
+      await apiClient.auth.refresh()
     } catch {
-      get().logout()
+      set({ user: null, isAuthenticated: false })
     }
   },
 
@@ -67,18 +64,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ isLoading: false })
         return
       }
-      const tokensRaw = localStorage.getItem('auth_tokens')
-      if (!tokensRaw) {
-        set({ isLoading: false })
-        return
-      }
-      const tokens: AuthTokens = JSON.parse(tokensRaw)
-      set({ tokens, isAuthenticated: true })
       const user = await apiClient.auth.getMe()
-      set({ user, isLoading: false })
+      set({ user, isAuthenticated: true, isLoading: false })
     } catch {
-      localStorage.removeItem('auth_tokens')
-      set({ user: null, tokens: null, isAuthenticated: false, isLoading: false })
+      set({ user: null, isAuthenticated: false, isLoading: false })
     }
   },
 }))

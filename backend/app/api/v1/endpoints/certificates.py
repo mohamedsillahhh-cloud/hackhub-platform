@@ -1,8 +1,11 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.deps import get_current_active_user, get_current_organizer
+from app.models.user import User
 from app.schemas.certificate import CertificateResponse
 from app.services.certificate_service import CertificateService
 
@@ -16,13 +19,36 @@ async def verify_certificate(code: str, db: AsyncSession = Depends(get_db)):
     return certificate
 
 
+@router.get("/my")
+async def get_my_certificates(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    service = CertificateService(db)
+    return await service.get_user_certificates(current_user.id)
+
+
+@router.post("/events/{event_id}/generate")
+async def generate_event_certificates(
+    event_id: UUID,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_organizer),
+    db: AsyncSession = Depends(get_db),
+):
+    service = CertificateService(db)
+    background_tasks.add_task(service.generate_all_certificates, event_id)
+    return {"message": "Certificate generation started", "event_id": str(event_id)}
+
+
 @router.get("/download/{certificate_id}")
-async def download_certificate(certificate_id: UUID, db: AsyncSession = Depends(get_db)):
+async def download_certificate_html(
+    certificate_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
     service = CertificateService(db)
     certificate = await service.get_certificate(certificate_id)
-
-    from fastapi.responses import HTMLResponse
-
+    extra = certificate.extra_data or {}
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -31,9 +57,9 @@ async def download_certificate(certificate_id: UUID, db: AsyncSession = Depends(
         <div style="border: 3px solid #333; padding: 40px; max-width: 700px; margin: auto;">
             <h1>Certificate of {certificate.type.value.title()}</h1>
             <p>This certificate is awarded to</p>
-            <h2>{certificate.metadata.get('user_name', 'Participant')}</h2>
+            <h2>{extra.get('user_name', 'Participant')}</h2>
             <p>for the event</p>
-            <h3>{certificate.metadata.get('event_title', 'Hackathon')}</h3>
+            <h3>{extra.get('event_title', 'Hackathon')}</h3>
             <p>Issued on: {certificate.issued_at.strftime('%B %d, %Y')}</p>
             <p>Verification Code: <strong>{certificate.verification_code}</strong></p>
             <img src="{certificate.qr_code_url}" alt="QR Code" style="width: 150px; height: 150px;"/>

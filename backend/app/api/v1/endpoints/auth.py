@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -10,7 +10,6 @@ from app.schemas.user import (
     UserResponse,
     UserUpdate,
     TokenResponse,
-    RefreshTokenRequest,
     PasswordResetRequest,
     PasswordResetConfirm,
 )
@@ -20,23 +19,62 @@ from app.services.user_service import UserService
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+def set_token_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=900,
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=604800,
+        path="/api/v1/auth/refresh",
+    )
+
+
+def clear_token_cookies(response: Response) -> None:
+    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/api/v1/auth/refresh")
+
+
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+async def register(user_data: UserCreate, response: Response, db: AsyncSession = Depends(get_db)):
     service = AuthService(db)
     user = await service.register(user_data)
-    return user
+    return {"id": str(user.id), "email": user.email, "username": user.username, "full_name": user.full_name}
 
 
-@router.post("/login", response_model=TokenResponse)
-async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
+@router.post("/login")
+async def login(credentials: UserLogin, response: Response, db: AsyncSession = Depends(get_db)):
     service = AuthService(db)
-    return await service.login(credentials.email, credentials.password)
+    result = await service.login(credentials.email, credentials.password)
+    set_token_cookies(response, result["access_token"], result["refresh_token"])
+    return {"message": "Login successful"}
 
 
-@router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(request: RefreshTokenRequest, db: AsyncSession = Depends(get_db)):
+@router.post("/refresh")
+async def refresh_token(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
+    refresh_token_str = request.cookies.get("refresh_token")
+    if not refresh_token_str:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No refresh token")
     service = AuthService(db)
-    return await service.refresh_token(request.refresh_token)
+    result = await service.refresh_token(refresh_token_str)
+    set_token_cookies(response, result["access_token"], result["refresh_token"])
+    return {"message": "Token refreshed"}
+
+
+@router.post("/logout")
+async def logout(response: Response):
+    clear_token_cookies(response)
+    return {"message": "Logged out successfully"}
 
 
 @router.post("/verify-email/{token}")

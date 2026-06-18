@@ -29,6 +29,17 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: str = ""
 
+    AI_RATE_LIMIT_ASK: str = "20/minute"
+    AI_RATE_LIMIT_EVALUATE: str = "5/minute"
+    AI_RATE_LIMIT_SUGGEST: str = "3/minute"
+    AI_DAILY_TOKEN_LIMIT: int = 100000
+
+    PLAN_LIMITS: dict = {
+        "free": {"max_events": 3, "max_participants": 100, "ai_enabled": False, "custom_domain": False},
+        "pro": {"max_events": 20, "max_participants": 500, "ai_enabled": True, "custom_domain": False},
+        "enterprise": {"max_events": -1, "max_participants": -1, "ai_enabled": True, "custom_domain": True},
+    }
+
     @property
     def cors_origins_list(self) -> List[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
