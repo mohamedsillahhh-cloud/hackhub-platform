@@ -1,28 +1,5 @@
-version: "3.9"
-
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:16-alpine
-    container_name: hackhub-postgres
-    restart: unless-stopped
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-hackhub}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hackhub_secret}
-      POSTGRES_DB: ${POSTGRES_DB:-hackhub}
-    ports:
-      - "5432:5432"
-    networks:
-      - hackhub-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hackhub"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Redis for caching and real-time
+  # Optional cache and AI usage counters
   redis:
     image: redis:7-alpine
     container_name: hackhub-redis
@@ -47,26 +24,32 @@ services:
     container_name: hackhub-backend
     restart: unless-stopped
     volumes:
-      - ./backend:/app
       - media_data:/app/media
+      - sqlite_data:/data
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-hackhub}:${POSTGRES_PASSWORD:-hackhub_secret}@postgres:5432/${POSTGRES_DB:-hackhub}
+      DATABASE_URL: sqlite+aiosqlite:////data/hackhub.db
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ${SECRET_KEY:-super-secret-key-change-in-production}
       ENVIRONMENT: ${ENVIRONMENT:-development}
-      SMTP_HOST: ${SMTP_HOST:-smtp.mailtrap.io}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      AUTO_CREATE_TABLES: ${AUTO_CREATE_TABLES:-true}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS:-localhost,127.0.0.1,backend}
+      SMTP_SERVER: ${SMTP_SERVER:-smtp.mailtrap.io}
       SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     networks:
       - hackhub-network
 
@@ -75,20 +58,24 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api/v1}
+        NEXT_PUBLIC_APP_URL: ${APP_URL:-http://localhost}
     container_name: hackhub-frontend
     restart: unless-stopped
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
-      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost/ws}
-      NODE_ENV: ${NODE_ENV:-development}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api/v1}
+      NODE_ENV: production
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     networks:
       - hackhub-network
 
@@ -102,8 +89,10 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
     networks:
       - hackhub-network
 
@@ -112,6 +101,6 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
   redis_data:
   media_data:
+  sqlite_data:

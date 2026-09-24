@@ -56,7 +56,7 @@ if (-not (Test-Path "frontend\.env.local")) {
 Write-Host "`nInstalling backend dependencies..." -ForegroundColor Yellow
 Set-Location -Path "backend"
 python -m venv venv
-.\venv\Scripts\pip install -r requirements.txt
+.\venv\Scripts\pip install -r requirements-dev.txt
 Set-Location -Path ".."
 Write-Host "  Backend dependencies installed" -ForegroundColor Green
 
@@ -72,11 +72,10 @@ Write-Host "     Setup Complete!                         " -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Quick Start:" -ForegroundColor White
-Write-Host "  1. Start Docker services:      docker compose up -d postgres redis" -ForegroundColor Gray
-Write-Host "  2. Run data migrations:        cd backend; alembic upgrade head" -ForegroundColor Gray
-Write-Host "  3. Start backend:              cd backend; uvicorn app.main:app --reload" -ForegroundColor Gray
-Write-Host "  4. Start frontend:             cd frontend; npm run dev" -ForegroundColor Gray
-Write-Host "  5. Full stack with Docker:     docker compose up" -ForegroundColor Gray
+Write-Host "  1. Start optional Redis cache: docker compose up -d redis" -ForegroundColor Gray
+Write-Host "  2. Start backend:              cd backend; uvicorn app.main:app --reload" -ForegroundColor Gray
+Write-Host "  3. Start frontend:             cd frontend; npm run dev" -ForegroundColor Gray
+Write-Host "  4. Full stack with Docker:     docker compose up" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Access:" -ForegroundColor White
 Write-Host "  Frontend:    http://localhost:3000" -ForegroundColor Gray
