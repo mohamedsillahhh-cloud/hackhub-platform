@@ -1,5 +1,5 @@
 'use client'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -35,7 +35,7 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
     register,
     handleSubmit,
     formState: { errors },
-    watch,
+    control,
     setValue,
   } = useForm({
     resolver: zodResolver(eventSchema),
@@ -55,7 +55,7 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
     },
   })
 
-  const isOnline = watch('is_online')
+  const isOnline = useWatch({ control, name: 'is_online' })
 
   const handleFormSubmit = async (data: EventFormData) => {
     await onSubmit({
@@ -133,12 +133,6 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
             {...register('location')}
           />
         )}
-        <Input
-          label="Max Team Size"
-          type="number"
-          error={errors.max_team_size?.message}
-          {...register('max_team_size')}
-        />
         <Input
           label="Min Team Size"
           type="number"

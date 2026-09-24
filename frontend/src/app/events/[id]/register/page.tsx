@@ -25,7 +25,7 @@ export default function RegisterForEventPage() {
   const createTeam = useCreateTeam(eventId)
   const joinTeam = useJoinTeam(eventId)
 
-  const [mode, setMode] = useState<'select' | 'create' | 'join'>('create')
+  const [mode, setMode] = useState<'create' | 'join'>('create')
   const [inviteCode, setInviteCode] = useState('')
   const [isJoining, setIsJoining] = useState(false)
 

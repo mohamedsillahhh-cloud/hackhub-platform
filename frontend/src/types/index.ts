@@ -50,8 +50,7 @@ export interface User {
   id: string;
   email: string;
   username: string;
-  full_name: string;
-  hashed_password?: string;
+  full_name?: string;
   role: UserRole;
   is_active: boolean;
   is_verified: boolean;
@@ -64,6 +63,7 @@ export interface User {
   github_url?: string;
   linkedin_url?: string;
   portfolio_url?: string;
+  telegram_chat_id?: string;
   experience_level?: string;
   preferred_languages: string[];
   preferred_frameworks: string[];
@@ -102,6 +102,7 @@ export interface Team {
   event_id: string;
   event?: Event;
   leader_id: string;
+  invitation_code?: string;
   leader?: User;
   members: TeamMember[];
   created_at: string;
@@ -112,7 +113,10 @@ export interface TeamMember {
   id: string;
   team_id: string;
   user_id: string;
-  user: User;
+  user?: User;
+  username?: string;
+  full_name?: string;
+  avatar_url?: string;
   role: TeamMemberRole;
   status: 'pending' | 'accepted' | 'rejected';
   invited_by?: string;
@@ -277,12 +281,25 @@ export interface DashboardStats {
   }>;
 }
 
+export interface PublicDashboardStats {
+  total_events: number;
+  active_participants: number;
+  total_projects: number;
+  total_teams: number;
+}
+
 export interface EventDashboardStats {
   total_teams: number;
   total_projects: number;
   total_participants: number;
-  projects_submitted: number;
-  ranking: RankingEntry[];
+  submitted_projects: number;
+  total_evaluations: number;
+}
+
+export interface UserStats {
+  events: number;
+  projects: number;
+  certificates: number;
 }
 
 // =============================================================================
@@ -337,7 +354,7 @@ export interface CreateChallengeRequest {
   description?: string;
   requirements?: string;
   documentation_url?: string;
-  category_id?: string;
+  category_id: string;
 }
 
 export interface SubmitEvaluationRequest {

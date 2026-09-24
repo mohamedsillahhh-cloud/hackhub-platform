@@ -15,10 +15,12 @@ import { useEvent, useUpdateEvent, useChangeEventStatus } from '@/hooks/useEvent
 import { useRanking } from '@/hooks/useRanking'
 import { useAuth } from '@/hooks/useAuth'
 import { useEventStats } from '@/hooks/useDashboard'
-import { apiClient } from '@/lib/api'
 import { useProjects } from '@/hooks/useProjects'
 import { ProjectCard } from '@/components/shared/project-card'
+import { TeamCard } from '@/components/shared/team-card'
+import { ChallengeManager } from '@/components/shared/challenge-manager'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useTeams } from '@/hooks/useTeams'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import type { CreateEventRequest } from '@/types'
@@ -32,8 +34,9 @@ export default function ManageEventDetailPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const { data: event, isLoading, error, refetch } = useEvent(id)
   const { data: ranking } = useRanking(id)
-  const { data: stats, isLoading: statsLoading } = useEventStats(id)
+  const { data: stats } = useEventStats(id)
   const { data: projectsData } = useProjects(id)
+  const { data: teams = [] } = useTeams(id)
   const updateEvent = useUpdateEvent()
   const changeStatus = useChangeEventStatus()
 
@@ -98,8 +101,8 @@ export default function ManageEventDetailPage() {
             {[
               { label: 'Teams', value: stats?.total_teams || 0, icon: Users },
               { label: 'Projects', value: stats?.total_projects || 0, icon: FolderKanban },
-              { label: 'Submitted', value: stats?.projects_submitted || 0, icon: Trophy },
-              { label: 'Evaluated', value: 0, icon: Eye },
+              { label: 'Submitted', value: stats?.submitted_projects || 0, icon: Trophy },
+              { label: 'Evaluated', value: stats?.total_evaluations || 0, icon: Eye },
             ].map((stat) => {
               const Icon = stat.icon
               return (
@@ -130,11 +133,6 @@ export default function ManageEventDetailPage() {
             {event.status === 'in_progress' && (
               <Button onClick={() => handleChangeStatus('closed')} size="sm" variant="secondary">
                 Close Event
-              </Button>
-            )}
-            {event.status !== 'closed' && (
-              <Button onClick={() => handleChangeStatus('cancelled')} size="sm" variant="destructive">
-                Cancel Event
               </Button>
             )}
             <Link href={`/dashboard/events/${id}?edit=true`}>
@@ -206,26 +204,23 @@ export default function ManageEventDetailPage() {
             </TabsContent>
 
             <TabsContent value="challenges" className="mt-6">
-              <Card>
-                <CardContent className="p-6">
-                  <p className="text-muted-foreground">Challenge management coming soon.</p>
-                </CardContent>
-              </Card>
+              <ChallengeManager eventId={id} />
             </TabsContent>
 
             <TabsContent value="teams" className="mt-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <EmptyState
-                  title="No teams yet"
-                  description="Teams will appear here once participants register"
-                />
-              </div>
+              {teams.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {teams.map((team, index) => <TeamCard key={team.id} team={team} index={index} linked={false} />)}
+                </div>
+              ) : (
+                <EmptyState title="No teams yet" description="Teams will appear here once participants register" />
+              )}
             </TabsContent>
 
             <TabsContent value="evaluations" className="mt-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {projects.length > 0 ? (
-                  projects.map((project: any, i: number) => (
+                  projects.map((project, i) => (
                     <ProjectCard key={project.id} project={project} index={i} />
                   ))
                 ) : (

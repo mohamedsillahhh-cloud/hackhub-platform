@@ -19,16 +19,22 @@ const COLORS = ['#3b82f6', '#8b5cf6', '#ef4444', '#10b981', '#f59e0b', '#ec4899'
 export default function DashboardPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
-  const { data: stats, isLoading, error, refetch } = useDashboardStats()
+  const canManage = user?.role === 'admin' || user?.role === 'organizer'
+  const { data: stats, isLoading, error, refetch } = useDashboardStats(
+    !authLoading && isAuthenticated && canManage
+  )
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push('/auth/login')
+      router.replace('/auth/login')
+    } else if (!authLoading && isAuthenticated && user && !canManage) {
+      router.replace('/events')
     }
-  }, [authLoading, isAuthenticated, router])
+  }, [authLoading, canManage, isAuthenticated, router, user])
 
   if (authLoading) return <LoadingState className="min-h-[calc(100vh-4rem)]" />
   if (!isAuthenticated) return null
+  if (!canManage) return <LoadingState className="min-h-[calc(100vh-4rem)]" />
 
   if (isLoading) return <LoadingState className="min-h-[calc(100vh-4rem)]" />
   if (error) return <ErrorState message="Failed to load dashboard" onRetry={() => refetch()} className="min-h-[calc(100vh-4rem)]" />
@@ -42,6 +48,19 @@ export default function DashboardPage() {
   const techData = (stats.top_technologies || []).slice(0, 10)
 
   const recentEventsData = (stats.recent_events || []).slice(0, 5)
+  const statCards = user?.role === 'admin'
+    ? [
+        { label: 'Total Users', value: stats.total_users, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+        { label: 'Total Events', value: stats.total_events, icon: Calendar, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+        { label: 'Active Events', value: stats.events_by_status?.in_progress || 0, icon: TrendingUp, color: 'text-green-500', bg: 'bg-green-500/10' },
+        { label: 'Active Participants', value: stats.active_participants, icon: UserCheck, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+      ]
+    : [
+        { label: 'Your Events', value: stats.total_events, icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+        { label: 'Teams', value: stats.total_teams, icon: Users, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+        { label: 'Projects', value: stats.total_projects, icon: FolderKanban, color: 'text-green-500', bg: 'bg-green-500/10' },
+        { label: 'Participants', value: stats.active_participants, icon: UserCheck, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+      ]
 
   return (
     <div className="min-h-screen py-8">
@@ -62,12 +81,7 @@ export default function DashboardPage() {
 
           {/* Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {[
-              { label: 'Total Users', value: stats.total_users, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-              { label: 'Total Events', value: stats.total_events, icon: Calendar, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-              { label: 'Active Events', value: stats.events_by_status?.in_progress || 0, icon: TrendingUp, color: 'text-green-500', bg: 'bg-green-500/10' },
-              { label: 'Active Participants', value: stats.active_participants, icon: UserCheck, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-            ].map((stat, i) => {
+            {statCards.map((stat, i) => {
               const Icon = stat.icon
               return (
                 <motion.div
@@ -161,7 +175,6 @@ export default function DashboardPage() {
               <DataTable
                 columns={[
                   { key: 'title', header: 'Title' },
-                  { key: 'status', header: 'Status' },
                   { key: 'start_date', header: 'Start Date', render: (item: any) => formatDate(item.start_date) },
                   { key: 'status', header: 'Status', render: (item: any) => item.status },
                 ]}

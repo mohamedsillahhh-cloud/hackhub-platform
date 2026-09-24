@@ -2,8 +2,8 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import type {
   LoginRequest, RegisterRequest, User, Event, Team, TeamMember,
   Challenge, ChallengeCategory, Criterion, Project, Evaluation,
-  Certificate, Notification,
-  PaginatedResponse, RankingEntry, DashboardStats, EventDashboardStats,
+  Certificate, Notification, UserStats,
+  PaginatedResponse, RankingEntry, DashboardStats, PublicDashboardStats, EventDashboardStats,
   CreateEventRequest, CreateTeamRequest, CreateProjectRequest,
   CreateChallengeRequest, SubmitEvaluationRequest, AIAskRequest,
   AIEvaluateRequest, AISuggestTeamsRequest,
@@ -58,7 +58,9 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError)
         if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth/')) {
-          window.location.href = '/auth/login'
+          // This interceptor runs outside React, so a Next router instance is unavailable.
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+          window.location.assign(`${window.location.origin}/auth/login`)
         }
         return Promise.reject(refreshError)
       } finally {
@@ -85,9 +87,11 @@ const apiClient = {
     resetPassword: (email: string) =>
       api.post('/auth/password-reset', { email }).then((r) => r.data),
     confirmReset: (token: string, password: string) =>
-      api.post('/auth/password-reset/confirm', { token, password }).then((r) => r.data),
+      api.post('/auth/password-reset/confirm', { token, new_password: password }).then((r) => r.data),
     getMe: () =>
       api.get<User>('/auth/me').then((r) => r.data),
+    getMyStats: () =>
+      api.get<UserStats>('/auth/me/stats').then((r) => r.data),
     updateProfile: (data: Partial<User>) =>
       api.put<User>('/auth/me', data).then((r) => r.data),
   },
@@ -95,6 +99,8 @@ const apiClient = {
   events: {
     list: (params?: Record<string, unknown>) =>
       api.get<PaginatedResponse<Event>>('/events', { params }).then((r) => r.data),
+    listManaged: (params?: Record<string, unknown>) =>
+      api.get<PaginatedResponse<Event>>('/events/managed', { params }).then((r) => r.data),
     getById: (id: string) =>
       api.get<Event>(`/events/${id}`).then((r) => r.data),
     create: (data: CreateEventRequest) =>
@@ -104,7 +110,7 @@ const apiClient = {
     delete: (id: string) =>
       api.delete(`/events/${id}`).then((r) => r.data),
     changeStatus: (id: string, status: string) =>
-      api.patch<Event>(`/events/${id}/status`, { status }).then((r) => r.data),
+      api.patch<Event>(`/events/${id}/status`, null, { params: { new_status: status } }).then((r) => r.data),
   },
 
   teams: {
@@ -121,7 +127,7 @@ const apiClient = {
     invite: (eventId: string, teamId: string, userId: string) =>
       api.post<TeamMember>(`/events/${eventId}/teams/${teamId}/invite`, { user_id: userId }).then((r) => r.data),
     join: (eventId: string, inviteCode: string) =>
-      api.post<Team>(`/events/${eventId}/teams/join`, { invitation_code: inviteCode }).then((r) => r.data),
+      api.post<TeamMember>(`/events/${eventId}/teams/join`, { invitation_code: inviteCode }).then((r) => r.data),
     accept: (eventId: string, teamId: string, memberId: string) =>
       api.post(`/events/${eventId}/teams/${teamId}/accept/${memberId}`).then((r) => r.data),
     reject: (eventId: string, teamId: string, memberId: string) =>
@@ -130,6 +136,8 @@ const apiClient = {
       api.delete(`/events/${eventId}/teams/${teamId}/members/${memberId}`).then((r) => r.data),
     leave: (eventId: string, teamId: string) =>
       api.delete(`/events/${eventId}/teams/${teamId}/leave`).then((r) => r.data),
+    transferLeadership: (eventId: string, teamId: string, newLeaderId: string) =>
+      api.post<Team>(`/events/${eventId}/teams/${teamId}/transfer-leadership`, { new_leader_id: newLeaderId }).then((r) => r.data),
   },
 
   challenges: {
@@ -147,7 +155,7 @@ const apiClient = {
       api.get<ChallengeCategory[]>(`/events/${eventId}/challenges/categories`).then((r) => r.data),
     createCategory: (eventId: string, data: { name: string; description?: string }) =>
       api.post<ChallengeCategory>(`/events/${eventId}/challenges/categories`, data).then((r) => r.data),
-    createCriterion: (eventId: string, data: { category_id: string; name: string; max_score: number; weight: number }) =>
+    createCriterion: (eventId: string, data: { challenge_category_id: string; name: string; max_score: number; weight: number }) =>
       api.post<Criterion>(`/events/${eventId}/challenges/criteria`, data).then((r) => r.data),
   },
 
@@ -177,7 +185,7 @@ const apiClient = {
 
   ranking: {
     getFullRanking: (eventId: string) =>
-      api.get<RankingEntry[]>(`/events/${eventId}/ranking`).then((r) => r.data),
+      api.get<RankingEntry[]>(`/events/${eventId}/ranking/`).then((r) => r.data),
   },
 
   users: {
@@ -215,10 +223,12 @@ const apiClient = {
     evaluateProject: (projectId: string) =>
       api.post<{ scores: Record<string, number>; feedback: string }>(`/ai/evaluate/${projectId}`).then((r) => r.data),
     suggestTeams: (eventId: string) =>
-      api.post<{ teams: { members: string[]; combined_skills: string[] }[] }>(`/ai/events/${eventId}/suggest-teams`).then((r) => r.data),
+      api.post<{ suggestions: { members: string[]; combined_skills: string[] }[] }>(`/ai/events/${eventId}/suggest-teams`).then((r) => r.data),
   },
 
   dashboard: {
+    getPublicStats: () =>
+      api.get<PublicDashboardStats>('/dashboard/public-stats').then((r) => r.data),
     getStats: () =>
       api.get<DashboardStats>('/dashboard/stats').then((r) => r.data),
     getEventStats: (eventId: string) =>

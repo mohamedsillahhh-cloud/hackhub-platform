@@ -86,3 +86,15 @@ export function useLeaveTeam(eventId: string, teamId: string) {
     },
   })
 }
+
+export function useTransferLeadership(eventId: string, teamId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (newLeaderId: string) => apiClient.teams.transferLeadership(eventId, teamId, newLeaderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team', teamId] })
+      queryClient.invalidateQueries({ queryKey: ['teams', eventId, teamId] })
+      queryClient.invalidateQueries({ queryKey: ['my-teams'] })
+    },
+  })
+}

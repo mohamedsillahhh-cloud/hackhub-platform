@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
-import { useDashboardStats } from '@/hooks/useDashboard'
+import { usePublicDashboardStats } from '@/hooks/useDashboard'
 
 const features = [
   {
@@ -114,7 +114,7 @@ function FeatureCard({ feature, index }: { feature: typeof features[0]; index: n
 
 export default function HomePage() {
   const { isAuthenticated } = useAuth()
-  const { data: stats } = useDashboardStats()
+  const { data: stats } = usePublicDashboardStats()
 
   return (
     <div className="overflow-hidden">

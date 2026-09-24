@@ -1,8 +1,8 @@
 'use client'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { Calendar, MapPin, Users, Clock, Globe, ArrowLeft } from 'lucide-react'
+import Image from 'next/image'
+import { ArrowLeft, Calendar, ExternalLink, Globe, MapPin, Target, Users } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,26 +10,56 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { LoadingState } from '@/components/ui/loading-state'
 import { ErrorState } from '@/components/ui/error-state'
+import { EmptyState } from '@/components/ui/empty-state'
 import { TeamCard } from '@/components/shared/team-card'
 import { RankingTable } from '@/components/shared/ranking-table'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { useEvent } from '@/hooks/useEvents'
 import { useRanking } from '@/hooks/useRanking'
 import { useAuth } from '@/hooks/useAuth'
-import { formatDate, cn, getStatusTextColor } from '@/lib/utils'
+import { useChallenges } from '@/hooks/useChallenges'
+import { useTeams } from '@/hooks/useTeams'
+import { formatDate, cn } from '@/lib/utils'
+
+function structuredItems(value: unknown): Array<{ label: string; detail?: string }> {
+  if (Array.isArray(value)) {
+    return value.map((item, index) => {
+      if (typeof item === 'string') return { label: item }
+      if (item && typeof item === 'object') {
+        const record = item as Record<string, unknown>
+        const label = String(record.name || record.title || record.question || `Item ${index + 1}`)
+        const detail = record.description || record.value || record.answer
+        return { label, detail: detail ? String(detail) : undefined }
+      }
+      return { label: String(item) }
+    })
+  }
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).map(([label, detail]) => ({
+      label,
+      detail: typeof detail === 'string' ? detail : JSON.stringify(detail),
+    }))
+  }
+  return []
+}
 
 export default function EventDetailPage() {
   const params = useParams()
   const id = params.id as string
   const { data: event, isLoading, error, refetch } = useEvent(id)
   const { data: ranking } = useRanking(id)
-  const { user, isAuthenticated } = useAuth()
+  const { data: challenges = [], isLoading: challengesLoading } = useChallenges(id)
+  const { data: teams = [], isLoading: teamsLoading } = useTeams(id)
+  const { isAuthenticated } = useAuth()
 
   if (isLoading) return <LoadingState className="min-h-[calc(100vh-4rem)]" />
   if (error) return <ErrorState message="Failed to load event" onRetry={() => refetch()} className="min-h-[calc(100vh-4rem)]" />
   if (!event) return null
 
   const isActive = event.status === 'in_progress' || event.status === 'published'
+  const prizes = structuredItems(event.prizes)
+  const sponsors = structuredItems(event.sponsors)
+  const faq = structuredItems(event.faq)
 
   return (
     <div className="min-h-screen">
@@ -39,7 +69,7 @@ export default function EventDetailPage() {
           event.cover_image ? '' : 'from-blue-600/30 via-purple-600/30 to-pink-600/30'
         )}>
           {event.cover_image && (
-            <img src={event.cover_image} alt={event.title} className="w-full h-full object-cover" />
+            <Image src={event.cover_image} alt={event.title} fill unoptimized className="object-cover" />
           )}
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
@@ -88,39 +118,72 @@ export default function EventDetailPage() {
                   </div>
                 </div>
 
-                {event.prizes && Object.keys(event.prizes).length > 0 && (
+                {prizes.length > 0 && (
                   <>
                     <Separator />
                     <div>
                       <h2 className="text-xl font-semibold mb-3">Prizes</h2>
-                      <p className="text-muted-foreground whitespace-pre-wrap">{JSON.stringify(event.prizes, null, 2)}</p>
+                      <div className="divide-y border-y">
+                        {prizes.map((prize) => (
+                          <div key={prize.label} className="py-3">
+                            <p className="font-medium">{prize.label}</p>
+                            {prize.detail && <p className="text-sm text-muted-foreground">{prize.detail}</p>}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </>
                 )}
 
-                {event.sponsors && Object.keys(event.sponsors).length > 0 && (
+                {sponsors.length > 0 && (
                   <>
                     <Separator />
                     <div>
                       <h2 className="text-xl font-semibold mb-3">Sponsors</h2>
-                      <p className="text-muted-foreground whitespace-pre-wrap">{JSON.stringify(event.sponsors, null, 2)}</p>
+                      <div className="flex flex-wrap gap-x-6 gap-y-2">
+                        {sponsors.map((sponsor) => (
+                          <span key={sponsor.label} className="font-medium">{sponsor.label}</span>
+                        ))}
+                      </div>
                     </div>
                   </>
                 )}
               </TabsContent>
 
               <TabsContent value="challenges">
-                <Card>
-                  <CardContent className="p-6">
-                    <p className="text-muted-foreground">Challenges will be displayed here once added by the organizer.</p>
-                  </CardContent>
-                </Card>
+                {challengesLoading ? <LoadingState /> : challenges.length === 0 ? (
+                  <EmptyState icon={<Target className="h-12 w-12" />} title="No challenges published" description="The organizer has not added challenges yet." />
+                ) : (
+                  <div className="divide-y border-y">
+                    {challenges.map((challenge) => (
+                      <div key={challenge.id} className="py-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-xs font-medium uppercase text-muted-foreground">{challenge.category?.name || 'Challenge'}</p>
+                            <h3 className="mt-1 text-lg font-semibold">{challenge.title}</h3>
+                          </div>
+                          {challenge.documentation_url && (
+                            <a href={challenge.documentation_url} target="_blank" rel="noreferrer" aria-label={`Open documentation for ${challenge.title}`}>
+                              <Button variant="ghost" size="icon"><ExternalLink className="h-4 w-4" /></Button>
+                            </a>
+                          )}
+                        </div>
+                        {challenge.description && <p className="mt-2 text-sm text-muted-foreground">{challenge.description}</p>}
+                        {challenge.requirements && <p className="mt-3 text-sm"><span className="font-medium">Requirements:</span> {challenge.requirements}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="teams">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <TeamCard team={{ id: '', name: 'Example Team', members: [], leader_id: '', invite_code: '', event_id: id } as any} />
-                </div>
+                {teamsLoading ? <LoadingState /> : teams.length === 0 ? (
+                  <EmptyState icon={<Users className="h-12 w-12" />} title="No teams registered" description="Registered teams will appear here." />
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {teams.map((team, index) => <TeamCard key={team.id} team={team} index={index} linked={false} />)}
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="ranking">
@@ -128,26 +191,18 @@ export default function EventDetailPage() {
               </TabsContent>
 
               <TabsContent value="faq">
-                <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="item-1">
-                    <AccordionTrigger>How do I register?</AccordionTrigger>
-                    <AccordionContent>
-                      Click the "Register Now" button and follow the instructions. You may need to create or join a team.
-                    </AccordionContent>
-                  </AccordionItem>
-                  <AccordionItem value="item-2">
-                    <AccordionTrigger>What are the team size limits?</AccordionTrigger>
-                    <AccordionContent>
-                      Maximum team size is {event.max_team_size} members.
-                    </AccordionContent>
-                  </AccordionItem>
-                  <AccordionItem value="item-3">
-                    <AccordionTrigger>How is the evaluation done?</AccordionTrigger>
-                    <AccordionContent>
-                      Projects are evaluated based on predefined criteria by judges and optionally by our AI system.
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
+                {faq.length === 0 ? (
+                  <EmptyState title="No questions published" description="Event FAQs will appear here." />
+                ) : (
+                  <Accordion type="single" collapsible className="w-full">
+                    {faq.map((item, index) => (
+                      <AccordionItem key={`${item.label}-${index}`} value={`item-${index}`}>
+                        <AccordionTrigger>{item.label}</AccordionTrigger>
+                        <AccordionContent>{item.detail}</AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                )}
               </TabsContent>
             </Tabs>
           </div>

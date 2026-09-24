@@ -8,13 +8,14 @@ import { useAuth } from '@/hooks/useAuth'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading } = useAuth()
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.push('/dashboard')
+    if (!isLoading && isAuthenticated && user) {
+      const destination = user.role === 'admin' || user.role === 'organizer' ? '/dashboard' : '/events'
+      router.replace(destination)
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [user, isAuthenticated, isLoading, router])
 
   if (isLoading) return null
 
