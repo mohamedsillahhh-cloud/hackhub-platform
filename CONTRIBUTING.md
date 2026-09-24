@@ -2,7 +2,10 @@
 
 First off, thanks for taking the time to contribute! 🎉
 
-HackHub is an open-source hackathon management platform built with Next.js 14, FastAPI, PostgreSQL, and Redis. Every contribution — whether it's a bug fix, new feature, documentation improvement, or typo fix — is appreciated.
+HackHub is an open-source hackathon management platform built with Next.js 16,
+FastAPI and SQLite. Redis is an optional cache. Every contribution — whether
+it's a bug fix, new feature, documentation improvement, or typo fix — is
+appreciated.
 
 ---
 
@@ -39,8 +42,7 @@ This project adheres to the [Contributor Covenant](https://www.contributor-coven
 
 - Python 3.12+
 - Node.js 20+
-- PostgreSQL 16
-- Redis 7
+- Redis 7 (optional)
 - Docker & Docker Compose (optional, but recommended)
 
 ### Local Setup
@@ -58,7 +60,7 @@ This project adheres to the [Contributor Covenant](https://www.contributor-coven
    cd backend
    python -m venv venv
    source venv/bin/activate  # On Windows: .\venv\Scripts\Activate.ps1
-   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    ```
 
 3. **Frontend setup:**
@@ -68,22 +70,23 @@ This project adheres to the [Contributor Covenant](https://www.contributor-coven
    npm install
    ```
 
-4. **Database setup (via Docker):**
+4. **Optional Redis cache (via Docker):**
 
    ```bash
-   docker compose up -d postgres redis
+   docker compose up -d redis
    ```
 
-   Or use your own PostgreSQL 16 and Redis 7 instances.
-
-5. **Run database migrations:**
+   Apply the current database schema before starting the backend:
 
    ```bash
    cd backend
    alembic upgrade head
    ```
 
-6. **Start the development servers:**
+   Development may use `AUTO_CREATE_TABLES=true`; production must use
+   migrations with `AUTO_CREATE_TABLES=false`.
+
+5. **Start the development servers:**
 
    ```bash
    # Terminal 1 — backend
@@ -99,12 +102,13 @@ This project adheres to the [Contributor Covenant](https://www.contributor-coven
 
 ### Environment Variables
 
-Copy `.env.example` to `.env` in both `backend/` and `frontend/` and adjust:
+Copy `backend/.env.example` to `backend/.env` and
+`frontend/.env.example` to `frontend/.env.local`, then adjust:
 
 **Backend** (`backend/.env`):
 
 ```env
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/hackhub
+DATABASE_URL=sqlite+aiosqlite:///./hackhub.db
 REDIS_URL=redis://localhost:6379/0
 SECRET_KEY=your-secret-key-at-least-32-chars
 OPENAI_API_KEY=sk-...  # Optional, for AI features
@@ -208,12 +212,10 @@ The project uses `black`, `isort`, and `flake8`. Run before committing:
 
 ```bash
 cd backend
-black app tests
-isort app tests
-flake8 app tests
+isort app tests alembic --profile black
+black app tests alembic --line-length=120
+flake8 app tests alembic --max-line-length=120 --extend-ignore=E203,W503
 ```
-
-Configuration is in `backend/pyproject.toml` and `backend/.flake8`.
 
 **Frontend:**
 
@@ -262,7 +264,7 @@ PR checklist before submitting:
 - [ ] Tests pass (`pytest` + `npx tsc --noEmit`)
 - [ ] Linting passes (`black`, `isort`, `flake8`, `npm run lint`)
 - [ ] New endpoints have Pydantic `response_model`
-- [ ] New database models include Alembic migration
+- [ ] Persistent schema changes include an Alembic revision
 - [ ] Environment variables have defaults and are documented in `.env.example`
 - [ ] Frontend hooks follow TanStack Query patterns
 - [ ] No `console.log`, debug code, or commented-out code
@@ -274,7 +276,8 @@ PR checklist before submitting:
 - **Clean Architecture**: endpoints → services → repositories. Services contain business logic, repositories handle data access. Endpoints are thin.
 - **Async everywhere**: Python uses `async/await` with SQLAlchemy 2.0's async session.
 - **JWT via httpOnly cookies**: tokens are never exposed to JavaScript. The `access_token` cookie is sent with every request automatically.
-- **Rate limiting**: AI endpoints are protected by `slowapi` with per-user limits. Daily token caps tracked in Redis.
+- **Rate limiting**: AI endpoints use request-address limits. Daily token caps
+  are tracked per user when Redis is available.
 - **File structure**: one file per domain in `endpoints/`, `services/`, and (if needed) `repositories/`. Models and schemas are similarly split.
 - **Frontend state**: Zustand for auth (cookie-driven, no token in JS), TanStack Query for all server state.
 

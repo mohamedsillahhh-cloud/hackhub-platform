@@ -1,5 +1,10 @@
 # RELATÓRIO TÉCNICO DO PROJETO HACKHUB
 
+> **Documento histórico:** este relatório descreve a arquitetura originalmente
+> planeada e pode mencionar componentes ainda não implementados. Para o estado
+> executável atual, consultar `README.md` e `MEMORIA/INDEX.md`; o código é a
+> fonte de verdade.
+
 > **Versão:** 1.0.0
 > **Data:** Junho 2026
 > **Autor:** Tech Lead / Software Architect
