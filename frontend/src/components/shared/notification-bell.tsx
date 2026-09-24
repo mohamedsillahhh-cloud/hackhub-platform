@@ -3,9 +3,11 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bell, CheckCheck, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useNotifications, useUnreadCount, useMarkRead, useMarkAllRead } from '@/hooks/useNotifications'
+import { useNotifications, useUnreadCount, useMarkRead, useMarkAllRead, useRespondToTeamInvite } from '@/hooks/useNotifications'
 import { formatRelativeTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import toast from 'react-hot-toast'
+import type { Notification } from '@/types'
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false)
@@ -13,8 +15,23 @@ export function NotificationBell() {
   const { data: notificationsData } = useNotifications()
   const markRead = useMarkRead()
   const markAllRead = useMarkAllRead()
+  const respondToInvite = useRespondToTeamInvite()
 
   const notifications = notificationsData?.items || []
+
+  const respond = async (notification: Notification, action: 'accept' | 'reject') => {
+    const eventId = notification.data?.event_id
+    const teamId = notification.data?.team_id
+    const memberId = notification.data?.member_id
+    if (typeof eventId !== 'string' || typeof teamId !== 'string' || typeof memberId !== 'string') return
+    try {
+      await respondToInvite.mutateAsync({ action, eventId, teamId, memberId })
+      if (!notification.read) await markRead.mutateAsync(notification.id)
+      toast.success(action === 'accept' ? 'Team invitation accepted' : 'Team invitation declined')
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Unable to process invitation')
+    }
+  }
 
   return (
     <div className="relative">
@@ -87,6 +104,12 @@ export function NotificationBell() {
                           <p className="text-xs text-muted-foreground mt-1">
                             {formatRelativeTime(notif.sent_at)}
                           </p>
+                          {notif.category === 'team_invite' && !notif.read && (
+                            <div className="mt-3 flex gap-2">
+                              <Button size="sm" onClick={(event) => { event.stopPropagation(); respond(notif, 'accept') }}>Accept</Button>
+                              <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); respond(notif, 'reject') }}>Decline</Button>
+                            </div>
+                          )}
                         </div>
                         {!notif.read && (
                           <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" />

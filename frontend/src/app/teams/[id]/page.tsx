@@ -12,13 +12,13 @@ import { Separator } from '@/components/ui/separator'
 import { LoadingState } from '@/components/ui/loading-state'
 import { ErrorState } from '@/components/ui/error-state'
 import { ProjectForm } from '@/components/forms/project-form'
-import { useTeamById, useLeaveTeam, useRemoveMember, useInviteMember } from '@/hooks/useTeams'
+import { useTeamById, useLeaveTeam, useRemoveMember, useInviteMember, useTransferLeadership } from '@/hooks/useTeams'
 import { useAuth } from '@/hooks/useAuth'
 import { useCreateProject } from '@/hooks/useProjects'
 import { generateInitials, getRoleBadgeColor } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import type { TeamMemberRole, CreateProjectRequest } from '@/types'
+import type { CreateProjectRequest, TeamMember } from '@/types'
 
 export default function TeamDetailPage() {
   const params = useParams()
@@ -29,21 +29,22 @@ export default function TeamDetailPage() {
   const [inviteUserId, setInviteUserId] = useState('')
   const [copied, setCopied] = useState(false)
   const [showProjectForm, setShowProjectForm] = useState(false)
+  const eventId = team?.event_id || ''
+  const leaveTeam = useLeaveTeam(eventId, teamId)
+  const removeMember = useRemoveMember(eventId, teamId)
+  const inviteMember = useInviteMember(eventId, teamId)
+  const transferLeadership = useTransferLeadership(eventId, teamId)
+  const createProject = useCreateProject(eventId)
 
   if (isLoading) return <LoadingState className="min-h-[calc(100vh-4rem)]" />
   if (error) return <ErrorState message="Failed to load team" onRetry={() => refetch()} className="min-h-[calc(100vh-4rem)]" />
   if (!team) return null
 
   const isLeader = team.leader_id === user?.id
-  const eventId = team.event_id
-
-  const leaveTeam = useLeaveTeam(eventId, teamId)
-  const removeMember = useRemoveMember(eventId, teamId)
-  const inviteMember = useInviteMember(eventId, teamId)
-  const createProject = useCreateProject(eventId)
 
   const handleCopyInviteCode = () => {
-    navigator.clipboard.writeText(team.id)
+    if (!team.invitation_code) return
+    navigator.clipboard.writeText(team.invitation_code)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
     toast.success('Invite code copied!')
@@ -89,6 +90,15 @@ export default function TeamDetailPage() {
     }
   }
 
+  const handleTransferLeadership = async (userId: string) => {
+    try {
+      await transferLeadership.mutateAsync(userId)
+      toast.success('Leadership transferred')
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Failed to transfer leadership')
+    }
+  }
+
   const roleLabels: Record<string, string> = {
     leader: 'Leader',
     member: 'Member',
@@ -123,7 +133,7 @@ export default function TeamDetailPage() {
                   <CardTitle className="text-lg">Members ({team.members?.length || 0})</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {team.members?.map((member: any) => (
+                  {team.members?.map((member: TeamMember) => (
                     <div key={member.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-colors">
                       <div className="flex items-center gap-3">
                         <Avatar>
@@ -144,14 +154,25 @@ export default function TeamDetailPage() {
                           {roleLabels[member.role] || member.role}
                         </Badge>
                         {isLeader && member.user_id !== user?.id && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveMember(member.id)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Transfer leadership"
+                              onClick={() => handleTransferLeadership(member.user_id)}
+                            >
+                              <Crown className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Remove member"
+                              onClick={() => handleRemoveMember(member.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -171,7 +192,7 @@ export default function TeamDetailPage() {
                       <label className="text-sm font-medium">Invite Code</label>
                       <div className="flex gap-2">
                         <code className="flex-1 px-3 py-2 rounded-md bg-muted text-sm font-mono">
-                          {team.id.slice(0, 8)}
+                          {team.invitation_code}
                         </code>
                         <Button variant="outline" size="icon" onClick={handleCopyInviteCode}>
                           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -194,11 +215,7 @@ export default function TeamDetailPage() {
                     </div>
 
                     <Separator />
-
-                    <Button variant="destructive" className="w-full" onClick={handleLeaveTeam}>
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete Team
-                    </Button>
+                    <p className="text-xs text-muted-foreground">Transfer leadership to another accepted member before leaving the team.</p>
                   </CardContent>
                 </Card>
               )}

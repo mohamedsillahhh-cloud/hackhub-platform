@@ -1,6 +1,7 @@
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from httpx import AsyncClient
-from datetime import datetime, timedelta
 
 
 @pytest.mark.asyncio
@@ -11,8 +12,8 @@ async def test_create_event(client: AsyncClient, admin_headers: dict):
         json={
             "title": "Test Hackathon",
             "description": "A test event",
-            "start_date": (datetime.utcnow() + timedelta(days=7)).isoformat(),
-            "end_date": (datetime.utcnow() + timedelta(days=9)).isoformat(),
+            "start_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+            "end_date": (datetime.now(timezone.utc) + timedelta(days=9)).isoformat(),
             "location": "Online",
             "is_online": True,
             "max_team_size": 4,
@@ -32,8 +33,8 @@ async def test_create_event_unauthorized(client: AsyncClient, auth_headers: dict
         headers=auth_headers,
         json={
             "title": "Unauthorized Event",
-            "start_date": (datetime.utcnow() + timedelta(days=7)).isoformat(),
-            "end_date": (datetime.utcnow() + timedelta(days=9)).isoformat(),
+            "start_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+            "end_date": (datetime.now(timezone.utc) + timedelta(days=9)).isoformat(),
         },
     )
     assert response.status_code == 403
@@ -46,8 +47,8 @@ async def test_list_events(client: AsyncClient, admin_headers: dict):
         headers=admin_headers,
         json={
             "title": "Event 1",
-            "start_date": (datetime.utcnow() + timedelta(days=7)).isoformat(),
-            "end_date": (datetime.utcnow() + timedelta(days=9)).isoformat(),
+            "start_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+            "end_date": (datetime.now(timezone.utc) + timedelta(days=9)).isoformat(),
         },
     )
     await client.post(
@@ -55,8 +56,8 @@ async def test_list_events(client: AsyncClient, admin_headers: dict):
         headers=admin_headers,
         json={
             "title": "Event 2",
-            "start_date": (datetime.utcnow() + timedelta(days=14)).isoformat(),
-            "end_date": (datetime.utcnow() + timedelta(days=16)).isoformat(),
+            "start_date": (datetime.now(timezone.utc) + timedelta(days=14)).isoformat(),
+            "end_date": (datetime.now(timezone.utc) + timedelta(days=16)).isoformat(),
         },
     )
 
@@ -74,8 +75,8 @@ async def test_get_event(client: AsyncClient, admin_headers: dict):
         headers=admin_headers,
         json={
             "title": "Specific Event",
-            "start_date": (datetime.utcnow() + timedelta(days=7)).isoformat(),
-            "end_date": (datetime.utcnow() + timedelta(days=9)).isoformat(),
+            "start_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+            "end_date": (datetime.now(timezone.utc) + timedelta(days=9)).isoformat(),
         },
     )
     event_id = create_resp.json()["id"]
@@ -92,8 +93,8 @@ async def test_update_event(client: AsyncClient, admin_headers: dict):
         headers=admin_headers,
         json={
             "title": "Update Me",
-            "start_date": (datetime.utcnow() + timedelta(days=7)).isoformat(),
-            "end_date": (datetime.utcnow() + timedelta(days=9)).isoformat(),
+            "start_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+            "end_date": (datetime.now(timezone.utc) + timedelta(days=9)).isoformat(),
         },
     )
     event_id = create_resp.json()["id"]
@@ -114,8 +115,8 @@ async def test_delete_event(client: AsyncClient, admin_headers: dict):
         headers=admin_headers,
         json={
             "title": "Delete Me",
-            "start_date": (datetime.utcnow() + timedelta(days=7)).isoformat(),
-            "end_date": (datetime.utcnow() + timedelta(days=9)).isoformat(),
+            "start_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+            "end_date": (datetime.now(timezone.utc) + timedelta(days=9)).isoformat(),
         },
     )
     event_id = create_resp.json()["id"]
@@ -131,8 +132,8 @@ async def test_change_event_status(client: AsyncClient, admin_headers: dict):
         headers=admin_headers,
         json={
             "title": "Status Test",
-            "start_date": (datetime.utcnow() + timedelta(days=7)).isoformat(),
-            "end_date": (datetime.utcnow() + timedelta(days=9)).isoformat(),
+            "start_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+            "end_date": (datetime.now(timezone.utc) + timedelta(days=9)).isoformat(),
         },
     )
     event_id = create_resp.json()["id"]
@@ -152,8 +153,8 @@ async def test_change_event_status_invalid(client: AsyncClient, admin_headers: d
         headers=admin_headers,
         json={
             "title": "Invalid Status",
-            "start_date": (datetime.utcnow() + timedelta(days=7)).isoformat(),
-            "end_date": (datetime.utcnow() + timedelta(days=9)).isoformat(),
+            "start_date": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),
+            "end_date": (datetime.now(timezone.utc) + timedelta(days=9)).isoformat(),
         },
     )
     event_id = create_resp.json()["id"]

@@ -1,18 +1,25 @@
-from typing import List, Optional
-from uuid import UUID
 from datetime import date
+from uuid import UUID
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.models.user import UserRole
 from app.repositories.event_repository import EventRepository
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.user_repository import UserRepository
 
-
 try:
     import redis.asyncio as aioredis
-    _redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+
+    _redis = aioredis.from_url(
+        settings.REDIS_URL,
+        decode_responses=True,
+        socket_connect_timeout=settings.REDIS_TIMEOUT_SECONDS,
+        socket_timeout=settings.REDIS_TIMEOUT_SECONDS,
+        retry_on_timeout=False,
+    )
 except Exception:
     _redis = None
 
@@ -29,7 +36,10 @@ class AIService:
             return True
         today = date.today().isoformat()
         key = f"ai:usage:{user_id}:{today}"
-        current = await _redis.get(key)
+        try:
+            current = await _redis.get(key)
+        except Exception:
+            return True
         if current and int(current) >= settings.AI_DAILY_TOKEN_LIMIT:
             return False
         return True
@@ -39,8 +49,11 @@ class AIService:
             return
         today = date.today().isoformat()
         key = f"ai:usage:{user_id}:{today}"
-        await _redis.incrby(key, tokens)
-        await _redis.expire(key, 86400)
+        try:
+            await _redis.incrby(key, tokens)
+            await _redis.expire(key, 86400)
+        except Exception:
+            return
 
     async def _query_openai(self, system_prompt: str, user_message: str, user_id: str = "anonymous") -> str:
         if not settings.OPENAI_API_KEY:
@@ -62,8 +75,11 @@ class AIService:
             tokens = response.usage.total_tokens if response.usage else 0
             await self.track_token_usage(user_id, tokens)
             return response.choices[0].message.content or "No response generated."
-        except Exception as e:
-            return f"AI service error: {str(e)}"
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="AI provider request failed",
+            )
 
     async def get_event_assistant(self, event_id: UUID, question: str) -> str:
         event = await self.event_repo.get(event_id)
@@ -126,7 +142,7 @@ class AIService:
     async def suggest_teams(self, event_id: UUID) -> list:
         participants, _ = await self.user_repo.list_users_paginated(
             limit=200,
-            role=None,
+            role=UserRole.PARTICIPANT,
         )
 
         if len(participants) < 2:
@@ -144,31 +160,35 @@ class AIService:
             if p.experience_level:
                 exp_map = {"beginner": 1, "intermediate": 2, "advanced": 3, "expert": 4}
                 score += exp_map.get(p.experience_level.lower(), 0)
-            scored_participants.append({
-                "user_id": str(p.id),
-                "username": p.username,
-                "full_name": p.full_name,
-                "skills": p.skills or [],
-                "languages": p.preferred_languages or [],
-                "frameworks": p.preferred_frameworks or [],
-                "experience_level": p.experience_level,
-                "score": score,
-            })
+            scored_participants.append(
+                {
+                    "user_id": str(p.id),
+                    "username": p.username,
+                    "full_name": p.full_name,
+                    "skills": p.skills or [],
+                    "languages": p.preferred_languages or [],
+                    "frameworks": p.preferred_frameworks or [],
+                    "experience_level": p.experience_level,
+                    "score": score,
+                }
+            )
 
         scored_participants.sort(key=lambda x: x["score"], reverse=True)
 
         teams = []
         team_size = 3
         for i in range(0, len(scored_participants), team_size):
-            team_members = scored_participants[i:i + team_size]
+            team_members = scored_participants[i : i + team_size]
             if len(team_members) >= 2:
                 team_skills = set()
                 for m in team_members:
                     team_skills.update(m["skills"])
-                teams.append({
-                    "members": team_members,
-                    "combined_skills": list(team_skills),
-                    "average_score": sum(m["score"] for m in team_members) / len(team_members),
-                })
+                teams.append(
+                    {
+                        "members": team_members,
+                        "combined_skills": list(team_skills),
+                        "average_score": sum(m["score"] for m in team_members) / len(team_members),
+                    }
+                )
 
         return teams

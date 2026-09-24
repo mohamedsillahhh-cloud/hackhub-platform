@@ -1,10 +1,11 @@
 from typing import List, Optional, Tuple
 from uuid import UUID
-from datetime import datetime
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.event import Event, EventStatus
+from app.models.user import User, UserRole
 from app.repositories.event_repository import EventRepository
 from app.schemas.event import EventCreate, EventUpdate
 
@@ -40,25 +41,45 @@ class EventService:
             organizer_id=organizer_id,
         )
 
-    async def update_event(self, event_id: UUID, event_data: EventUpdate, user_id: UUID) -> Event:
+    async def update_event(self, event_id: UUID, event_data: EventUpdate, user: User) -> Event:
         event = await self.event_repo.get(event_id)
         if not event:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
-        if event.organizer_id != user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this event")
+        if user.role != UserRole.ADMIN and event.organizer_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to update this event",
+            )
 
         update_data = event_data.model_dump(exclude_unset=True)
+        start_date = update_data.get("start_date", event.start_date)
+        end_date = update_data.get("end_date", event.end_date)
+        min_team_size = update_data.get("min_team_size", event.min_team_size)
+        max_team_size = update_data.get("max_team_size", event.max_team_size)
+        if end_date <= start_date:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="end_date must be after start_date",
+            )
+        if min_team_size > max_team_size:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="min_team_size cannot exceed max_team_size",
+            )
         updated = await self.event_repo.update(event_id, **update_data)
         if not updated:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
         return updated
 
-    async def delete_event(self, event_id: UUID, user_id: UUID) -> None:
+    async def delete_event(self, event_id: UUID, user: User) -> None:
         event = await self.event_repo.get(event_id)
         if not event:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
-        if event.organizer_id != user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this event")
+        if user.role != UserRole.ADMIN and event.organizer_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to delete this event",
+            )
         await self.event_repo.delete(event_id)
 
     async def get_event(self, event_id: UUID) -> Event:
@@ -73,6 +94,7 @@ class EventService:
         size: int = 20,
         status: Optional[EventStatus] = None,
         search: Optional[str] = None,
+        organizer_id: Optional[UUID] = None,
     ) -> Tuple[List[Event], int]:
         skip = (page - 1) * size
         return await self.event_repo.list_events(
@@ -80,14 +102,18 @@ class EventService:
             limit=size,
             status=status,
             search=search,
+            organizer_id=organizer_id,
         )
 
-    async def change_status(self, event_id: UUID, new_status: EventStatus, user_id: UUID) -> Event:
+    async def change_status(self, event_id: UUID, new_status: EventStatus, user: User) -> Event:
         event = await self.event_repo.get(event_id)
         if not event:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
-        if event.organizer_id != user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to change event status")
+        if user.role != UserRole.ADMIN and event.organizer_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to change event status",
+            )
 
         allowed = self.VALID_TRANSITIONS.get(event.status, [])
         if new_status not in allowed:

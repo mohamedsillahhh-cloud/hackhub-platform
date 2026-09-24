@@ -1,10 +1,14 @@
 import enum
 import uuid
 from datetime import datetime
-from sqlalchemy import String, DateTime, Enum as SQLEnum, Integer, ForeignKey, func
-from app.core.types import UUID
+
+from sqlalchemy import DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
+from app.core.types import UUID
 
 
 class OrganizationPlan(str, enum.Enum):
@@ -19,7 +23,9 @@ class Organization(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    plan: Mapped[OrganizationPlan] = mapped_column(SQLEnum(OrganizationPlan), default=OrganizationPlan.FREE, nullable=False)
+    plan: Mapped[OrganizationPlan] = mapped_column(
+        SQLEnum(OrganizationPlan), default=OrganizationPlan.FREE, nullable=False
+    )
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     max_events: Mapped[int] = mapped_column(Integer, default=3)
     max_participants_per_event: Mapped[int] = mapped_column(Integer, default=100)

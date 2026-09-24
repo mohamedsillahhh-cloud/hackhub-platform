@@ -1,5 +1,7 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import List, Optional
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 
@@ -12,8 +14,8 @@ class CriterionCreate(BaseModel):
 
 
 class CriterionResponse(BaseModel):
-    id: str
-    challenge_category_id: str
+    id: UUID
+    challenge_category_id: UUID
     name: str
     description: Optional[str] = None
     max_score: float
@@ -29,8 +31,8 @@ class ChallengeCategoryCreate(BaseModel):
 
 
 class ChallengeCategoryResponse(BaseModel):
-    id: str
-    event_id: str
+    id: UUID
+    event_id: UUID
     name: str
     description: Optional[str] = None
     order: int
@@ -48,9 +50,9 @@ class ChallengeCreate(BaseModel):
 
 
 class ChallengeResponse(BaseModel):
-    id: str
-    event_id: str
-    category_id: str
+    id: UUID
+    event_id: UUID
+    category_id: UUID
     title: str
     description: Optional[str] = None
     requirements: Optional[str] = None

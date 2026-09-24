@@ -1,10 +1,12 @@
 import enum
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Boolean, DateTime, Enum, ForeignKey, JSON, Text, func
-from app.core.types import UUID
+
+from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
+from app.core.types import UUID
 
 
 class NotificationType(str, enum.Enum):

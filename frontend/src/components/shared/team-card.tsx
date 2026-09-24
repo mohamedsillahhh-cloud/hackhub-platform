@@ -11,20 +11,20 @@ import type { Team } from '@/types'
 interface TeamCardProps {
   team: Team
   index?: number
+  linked?: boolean
 }
 
-export function TeamCard({ team, index = 0 }: TeamCardProps) {
+export function TeamCard({ team, index = 0, linked = true }: TeamCardProps) {
   const displayMembers = team.members?.slice(0, 4) || []
   const extraCount = (team.members?.length || 0) - 4
 
-  return (
+  const card = (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
       whileHover={{ y: -4 }}
     >
-      <Link href={`/teams/${team.id}`}>
         <Card className="h-full hover:shadow-lg transition-all duration-300">
           <CardHeader>
             <div className="flex items-start justify-between">
@@ -50,7 +50,9 @@ export function TeamCard({ team, index = 0 }: TeamCardProps) {
                 {displayMembers.map((member) => (
                   <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
                     <AvatarFallback className="text-xs">
-                      {generateInitials(member.user.full_name)}
+                      {generateInitials(
+                        member.full_name || member.user?.full_name || member.username || member.user?.username || 'U'
+                      )}
                     </AvatarFallback>
                   </Avatar>
                 ))}
@@ -63,7 +65,8 @@ export function TeamCard({ team, index = 0 }: TeamCardProps) {
             </div>
           </CardContent>
         </Card>
-      </Link>
     </motion.div>
   )
+
+  return linked ? <Link href={`/teams/${team.id}`}>{card}</Link> : card
 }

@@ -1,6 +1,3 @@
-import pytest
-
-
 class TestScoreCalculation:
     def test_weighted_average(self):
         criteria = [

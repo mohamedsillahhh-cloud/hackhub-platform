@@ -1,9 +1,14 @@
-from fastapi import Depends, HTTPException, status, Request
-from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID
+
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import noload
 
 from app.core.database import get_db
 from app.core.security import decode_token
+from app.models.auth_session import AuthSession
+from app.models.event import Event
 from app.models.user import User, UserRole
 
 
@@ -35,7 +40,28 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
         )
-    result = await db.execute(select(User).where(User.id == user_id))
+    try:
+        user_uuid = UUID(user_id)
+        session_uuid = UUID(payload["sid"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+    session_result = await db.execute(
+        select(AuthSession.id).where(
+            AuthSession.id == session_uuid,
+            AuthSession.user_id == user_uuid,
+            AuthSession.revoked_at.is_(None),
+        )
+    )
+    if session_result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired or revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    result = await db.execute(select(User).options(noload("*")).where(User.id == user_uuid))
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(
@@ -76,3 +102,20 @@ async def get_current_organizer(
             detail="Organizer or admin privileges required",
         )
     return current_user
+
+
+async def require_event_manager(
+    db: AsyncSession,
+    event_id,
+    current_user: User,
+) -> Event:
+    result = await db.execute(select(Event).where(Event.id == event_id))
+    event = result.scalar_one_or_none()
+    if event is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+    if current_user.role != UserRole.ADMIN and event.organizer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Event manager access required",
+        )
+    return event

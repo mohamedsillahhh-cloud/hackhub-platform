@@ -1,12 +1,14 @@
 from datetime import datetime
-from typing import Optional, Any
+from typing import Any, Optional
+from uuid import UUID
+
 from pydantic import BaseModel
 
 
 class CertificateResponse(BaseModel):
-    id: str
-    user_id: str
-    event_id: str
+    id: UUID
+    user_id: UUID
+    event_id: UUID
     type: str
     template_name: Optional[str] = None
     qr_code_url: Optional[str] = None

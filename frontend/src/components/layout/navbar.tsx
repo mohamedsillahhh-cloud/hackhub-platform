@@ -27,8 +27,9 @@ const navLinks = [
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const pathname = usePathname()
+  const [mobileMenu, setMobileMenu] = useState({ open: false, pathname })
+  const isMobileMenuOpen = mobileMenu.open && mobileMenu.pathname === pathname
   const { user, isAuthenticated, logout } = useAuth()
 
   useEffect(() => {
@@ -36,10 +37,6 @@ export function Navbar() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
-
-  useEffect(() => {
-    setIsMobileMenuOpen(false)
-  }, [pathname])
 
   return (
     <header
@@ -157,7 +154,7 @@ export function Navbar() {
 
           <button
             className="md:hidden p-2 rounded-lg hover:bg-accent transition-colors"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            onClick={() => setMobileMenu({ open: !isMobileMenuOpen, pathname })}
           >
             {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>

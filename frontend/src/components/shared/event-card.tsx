@@ -1,8 +1,9 @@
 'use client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { Calendar, MapPin, Users } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatDate, cn } from '@/lib/utils'
 import type { Event, EventStatus } from '@/types'
@@ -41,10 +42,12 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
               )}
             >
               {event.cover_image && (
-                <img
+                <Image
                   src={event.cover_image}
                   alt={event.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  fill
+                  unoptimized
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               )}
             </div>

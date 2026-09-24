@@ -10,6 +10,14 @@ export function useEvents(filters?: Record<string, unknown>) {
   })
 }
 
+export function useManagedEvents(enabled = true, filters?: Record<string, unknown>) {
+  return useQuery({
+    queryKey: ['events', 'managed', filters],
+    queryFn: () => apiClient.events.listManaged(filters),
+    enabled,
+  })
+}
+
 export function useEvent(id: string) {
   return useQuery({
     queryKey: ['events', id],

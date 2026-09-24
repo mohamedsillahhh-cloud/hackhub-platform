@@ -1,13 +1,26 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Text, Float, Integer, ForeignKey, DateTime, func
-from app.core.types import UUID
+
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
+from app.core.types import UUID
 
 
 class ChallengeCategory(Base):
     __tablename__ = "challenge_categories"
+    __table_args__ = (UniqueConstraint("event_id", "name", name="uq_challenge_categories_event_name"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=False)
@@ -15,15 +28,32 @@ class ChallengeCategory(Base):
     description: Mapped[str] = mapped_column(Text, nullable=True)
     order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
-    challenges = relationship("Challenge", back_populates="category", lazy="selectin", cascade="all, delete-orphan")
-    criteria = relationship("Criterion", back_populates="challenge_category", lazy="selectin", cascade="all, delete-orphan")
+    challenges = relationship(
+        "Challenge",
+        back_populates="category",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+    criteria = relationship(
+        "Criterion",
+        back_populates="challenge_category",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
 
 
 class Criterion(Base):
     __tablename__ = "criteria"
+    __table_args__ = (
+        UniqueConstraint("challenge_category_id", "name", name="uq_criteria_category_name"),
+        CheckConstraint("max_score > 0", name="ck_criteria_max_score_positive"),
+        CheckConstraint("weight > 0", name="ck_criteria_weight_positive"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    challenge_category_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("challenge_categories.id"), nullable=False)
+    challenge_category_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("challenge_categories.id"), nullable=False
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=True)
     max_score: Mapped[float] = mapped_column(Float, nullable=False)
@@ -37,7 +67,9 @@ class Challenge(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     event_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("events.id"), nullable=False)
-    category_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("challenge_categories.id"), nullable=False)
+    category_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("challenge_categories.id"), nullable=False
+    )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=True)
     requirements: Mapped[str] = mapped_column(Text, nullable=True)

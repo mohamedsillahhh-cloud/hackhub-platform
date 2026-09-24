@@ -12,11 +12,13 @@ import { Button } from '@/components/ui/button'
 import { useEvents } from '@/hooks/useEvents'
 import { useAuth } from '@/hooks/useAuth'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export default function EventsPage() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
   const [page, setPage] = useState(1)
+  const router = useRouter()
   const { user } = useAuth()
 
   const params: Record<string, unknown> = {
@@ -29,7 +31,8 @@ export default function EventsPage() {
   const { data, isLoading, error, refetch } = useEvents(params)
 
   const events = data?.items || []
-  const totalPages = data?.page || 1
+  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.size)) : 1
+  const canCreateEvent = user?.role === 'organizer' || user?.role === 'admin'
 
   return (
     <div className="min-h-screen py-8">
@@ -43,7 +46,7 @@ export default function EventsPage() {
               <h1 className="text-3xl font-bold">Events</h1>
               <p className="text-muted-foreground mt-1">Browse and join hackathons</p>
             </div>
-            {user?.role === 'organizer' || user?.role === 'admin' ? (
+            {canCreateEvent ? (
               <Link href="/dashboard/events">
                 <Button>
                   <Calendar className="mr-2 h-4 w-4" />
@@ -97,7 +100,7 @@ export default function EventsPage() {
               icon={<Calendar className="h-16 w-16" />}
               title="No events found"
               description={search ? "Try a different search term" : "No events are available right now"}
-              action={user ? undefined : { label: 'Create Event', onClick: () => window.location.href = '/dashboard/events' }}
+              action={canCreateEvent ? { label: 'Create Event', onClick: () => router.push('/dashboard/events') } : undefined}
             />
           ) : (
             <>

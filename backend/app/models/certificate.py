@@ -1,10 +1,21 @@
 import enum
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Text, DateTime, Enum, ForeignKey, JSON, func
-from app.core.types import UUID
+
+from sqlalchemy import (
+    JSON,
+    DateTime,
+    Enum,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
+from app.core.types import UUID
 
 
 class CertificateType(str, enum.Enum):
@@ -17,6 +28,7 @@ class CertificateType(str, enum.Enum):
 
 class Certificate(Base):
     __tablename__ = "certificates"
+    __table_args__ = (UniqueConstraint("user_id", "event_id", "type", name="uq_certificates_user_event_type"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)

@@ -1,10 +1,21 @@
 import enum
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Text, DateTime, Enum, ForeignKey, JSON, func
-from app.core.types import UUID
+
+from sqlalchemy import (
+    JSON,
+    DateTime,
+    Enum,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
+from app.core.types import UUID
 
 
 class ProjectStatus(str, enum.Enum):
@@ -15,6 +26,7 @@ class ProjectStatus(str, enum.Enum):
 
 class Project(Base):
     __tablename__ = "projects"
+    __table_args__ = (UniqueConstraint("team_id", name="uq_projects_team"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     team_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=False)
@@ -28,17 +40,33 @@ class Project(Base):
     tech_stack: Mapped[list] = mapped_column(JSON, nullable=True, default=list)
     status: Mapped[ProjectStatus] = mapped_column(Enum(ProjectStatus), default=ProjectStatus.DRAFT, nullable=False)
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
     team = relationship("Team", lazy="selectin")
     event = relationship("Event", back_populates="projects", lazy="selectin")
     challenge = relationship("Challenge", lazy="selectin")
-    evaluations = relationship("Evaluation", back_populates="project", lazy="selectin", cascade="all, delete-orphan")
-    technologies = relationship("ProjectTechnology", back_populates="project", lazy="selectin", cascade="all, delete-orphan")
+    evaluations = relationship(
+        "Evaluation",
+        back_populates="project",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+    technologies = relationship(
+        "ProjectTechnology",
+        back_populates="project",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
 
 
 class ProjectTechnology(Base):
     __tablename__ = "project_technologies"
+    __table_args__ = (UniqueConstraint("project_id", "name", name="uq_project_technologies_project_name"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)

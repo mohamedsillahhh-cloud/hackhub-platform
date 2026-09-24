@@ -35,3 +35,26 @@ export function useMarkAllRead() {
     },
   })
 }
+
+export function useRespondToTeamInvite() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      action,
+      eventId,
+      teamId,
+      memberId,
+    }: {
+      action: 'accept' | 'reject'
+      eventId: string
+      teamId: string
+      memberId: string
+    }) => action === 'accept'
+      ? apiClient.teams.accept(eventId, teamId, memberId)
+      : apiClient.teams.reject(eventId, teamId, memberId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['my-teams'] })
+    },
+  })
+}

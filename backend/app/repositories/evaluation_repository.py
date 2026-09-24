@@ -1,9 +1,10 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from uuid import UUID
-from sqlalchemy import select, func, and_
+
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.evaluation import Evaluation, EvaluationScore
+from app.models.evaluation import Evaluation
 from app.repositories.base import BaseRepository
 
 
@@ -21,6 +22,7 @@ class EvaluationRepository(BaseRepository[Evaluation]):
         query = select(Evaluation).where(Evaluation.judge_id == judge_id)
         if event_id:
             from app.models.project import Project
+
             query = query.join(Project).where(Project.event_id == event_id)
         query = query.order_by(Evaluation.submitted_at.desc())
         result = await self.db.execute(query)
@@ -34,12 +36,16 @@ class EvaluationRepository(BaseRepository[Evaluation]):
             ).where(Evaluation.project_id == project_id)
         )
         row = result.one()
-        return {"average": float(row.average) if row.average else 0.0, "count": row.count or 0}
+        return {
+            "average": float(row.average) if row.average else 0.0,
+            "count": row.count or 0,
+        }
 
     async def get_ranking_data(self, event_id: UUID) -> list:
+        from sqlalchemy import desc
+
         from app.models.project import Project
         from app.models.team import Team
-        from sqlalchemy import desc
 
         result = await self.db.execute(
             select(
@@ -53,7 +59,10 @@ class EvaluationRepository(BaseRepository[Evaluation]):
             .select_from(Project)
             .join(Team, Project.team_id == Team.id)
             .outerjoin(Evaluation, Project.id == Evaluation.project_id)
-            .where(Project.event_id == event_id, Project.status.in_(["submitted", "finalized"]))
+            .where(
+                Project.event_id == event_id,
+                Project.status.in_(["submitted", "finalized"]),
+            )
             .group_by(Project.id, Project.name, Project.team_id, Team.name)
             .order_by(desc(func.coalesce(func.avg(Evaluation.total_score), 0)))
         )

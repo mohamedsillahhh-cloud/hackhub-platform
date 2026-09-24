@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Plus, Edit2, Trash2, Eye } from 'lucide-react'
@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { LoadingState } from '@/components/ui/loading-state'
 import { ErrorState } from '@/components/ui/error-state'
 import { EmptyState } from '@/components/ui/empty-state'
-import { useEvents, useCreateEvent, useUpdateEvent, useDeleteEvent } from '@/hooks/useEvents'
+import { useManagedEvents, useCreateEvent, useDeleteEvent } from '@/hooks/useEvents'
 import { useAuth } from '@/hooks/useAuth'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { EventForm } from '@/components/forms/event-form'
@@ -29,17 +29,26 @@ const statusStyles: Record<string, string> = {
 export default function ManageEventsPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
-  const { data, isLoading, error, refetch } = useEvents({ organizer_id: user?.id })
+  const canManage = user?.role === 'admin' || user?.role === 'organizer'
+  const { data, isLoading, error, refetch } = useManagedEvents(
+    !authLoading && isAuthenticated && canManage
+  )
   const createEvent = useCreateEvent()
   const deleteEvent = useDeleteEvent()
 
   const [showCreateDialog, setShowCreateDialog] = useState(false)
 
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.replace('/auth/login')
+    } else if (!authLoading && isAuthenticated && user && !canManage) {
+      router.replace('/events')
+    }
+  }, [authLoading, canManage, isAuthenticated, router, user])
+
   if (authLoading) return <LoadingState className="min-h-[calc(100vh-4rem)]" />
-  if (!isAuthenticated) {
-    router.push('/auth/login')
-    return null
-  }
+  if (!isAuthenticated) return null
+  if (!canManage) return <LoadingState className="min-h-[calc(100vh-4rem)]" />
 
   const events = data?.items || []
 

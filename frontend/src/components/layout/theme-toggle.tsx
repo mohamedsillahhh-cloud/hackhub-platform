@@ -1,15 +1,17 @@
 'use client'
 import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function ThemeToggle({ className }: { className?: string }) {
-  const [mounted, setMounted] = useState(false)
-  const { theme, setTheme } = useTheme()
+const subscribe = () => () => undefined
+const getClientSnapshot = () => true
+const getServerSnapshot = () => false
 
-  useEffect(() => setMounted(true), [])
+export function ThemeToggle({ className }: { className?: string }) {
+  const mounted = useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot)
+  const { theme, setTheme } = useTheme()
 
   if (!mounted) {
     return <div className={cn('h-9 w-9', className)} />

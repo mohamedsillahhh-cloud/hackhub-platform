@@ -1,5 +1,6 @@
-from uuid import UUID
 from typing import List
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,7 +36,7 @@ async def get_project_evaluations(
     db: AsyncSession = Depends(get_db),
 ):
     service = EvaluationService(db)
-    return await service.get_project_evaluations(project_id)
+    return await service.get_project_evaluations(event_id, project_id)
 
 
 @router.get("/ranking", response_model=List[RankResponse])
@@ -51,5 +52,6 @@ async def get_my_evaluations(
     current_user: User = Depends(get_current_active_user),
 ):
     from app.repositories.evaluation_repository import EvaluationRepository
+
     repo = EvaluationRepository(db)
     return await repo.get_by_judge(current_user.id, event_id)

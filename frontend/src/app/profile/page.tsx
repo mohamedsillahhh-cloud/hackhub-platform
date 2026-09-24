@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useAuth } from '@/hooks/useAuth'
 import { generateInitials, getRoleBadgeColor } from '@/lib/utils'
 import toast from 'react-hot-toast'
+import { useQuery } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -29,6 +31,12 @@ export default function ProfilePage() {
     linkedin_url: '',
     portfolio_url: '',
     skills: '',
+    telegram_chat_id: '',
+  })
+  const { data: stats } = useQuery({
+    queryKey: ['profile-stats'],
+    queryFn: () => apiClient.auth.getMyStats(),
+    enabled: isAuthenticated,
   })
 
   if (isLoading) return <LoadingState className="min-h-[calc(100vh-4rem)]" />
@@ -49,6 +57,7 @@ export default function ProfilePage() {
       linkedin_url: user.linkedin_url || '',
       portfolio_url: user.portfolio_url || '',
       skills: (user.skills || []).join(', '),
+      telegram_chat_id: user.telegram_chat_id || '',
     })
     setIsEditing(true)
   }
@@ -76,7 +85,9 @@ export default function ProfilePage() {
                 <CardContent className="p-6">
                   <Avatar className="h-24 w-24 mx-auto mb-4">
                     <AvatarImage src={user.avatar_url} />
-                    <AvatarFallback className="text-2xl">{generateInitials(user.full_name)}</AvatarFallback>
+                    <AvatarFallback className="text-2xl">
+                      {generateInitials(user.full_name || user.username)}
+                    </AvatarFallback>
                   </Avatar>
                   <h2 className="text-xl font-bold">{user.full_name}</h2>
                   <p className="text-sm text-muted-foreground">@{user.username}</p>
@@ -190,15 +201,15 @@ export default function ProfilePage() {
                 <CardContent>
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
-                      <p className="text-2xl font-bold text-primary">0</p>
+                      <p className="text-2xl font-bold text-primary">{stats?.events || 0}</p>
                       <p className="text-xs text-muted-foreground">Events</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-primary">0</p>
+                      <p className="text-2xl font-bold text-primary">{stats?.projects || 0}</p>
                       <p className="text-xs text-muted-foreground">Projects</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-primary">0</p>
+                      <p className="text-2xl font-bold text-primary">{stats?.certificates || 0}</p>
                       <p className="text-xs text-muted-foreground">Certificates</p>
                     </div>
                   </div>
@@ -264,6 +275,12 @@ export default function ProfilePage() {
               label="Portfolio URL"
               value={editData.portfolio_url}
               onChange={(e) => setEditData({ ...editData, portfolio_url: e.target.value })}
+            />
+            <Input
+              label="Telegram Chat ID"
+              value={editData.telegram_chat_id}
+              onChange={(e) => setEditData({ ...editData, telegram_chat_id: e.target.value })}
+              placeholder="Numeric chat ID from the HackHub bot"
             />
             <Button className="w-full" onClick={handleSaveProfile}>
               Save Changes
