@@ -1,11 +1,13 @@
 from datetime import datetime
-from typing import Optional, Any
+from typing import Any, List, Optional
+from uuid import UUID
+
 from pydantic import BaseModel
 
 
 class NotificationResponse(BaseModel):
-    id: str
-    user_id: str
+    id: UUID
+    user_id: UUID
     type: str
     category: str
     title: str
@@ -16,3 +18,10 @@ class NotificationResponse(BaseModel):
     read_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+
+class NotificationListResponse(BaseModel):
+    items: List[NotificationResponse]
+    total: int
+    page: int
+    size: int

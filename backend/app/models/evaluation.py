@@ -1,13 +1,24 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Text, Float, ForeignKey, DateTime, func
-from app.core.types import UUID
+
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
+from app.core.types import UUID
 
 
 class Evaluation(Base):
     __tablename__ = "evaluations"
+    __table_args__ = (UniqueConstraint("project_id", "judge_id", name="uq_evaluations_project_judge"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
@@ -18,11 +29,24 @@ class Evaluation(Base):
 
     project = relationship("Project", back_populates="evaluations", lazy="selectin")
     judge = relationship("User", back_populates="evaluations", lazy="selectin")
-    scores = relationship("EvaluationScore", back_populates="evaluation", lazy="selectin", cascade="all, delete-orphan")
+    scores = relationship(
+        "EvaluationScore",
+        back_populates="evaluation",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
 
 
 class EvaluationScore(Base):
     __tablename__ = "evaluation_scores"
+    __table_args__ = (
+        UniqueConstraint(
+            "evaluation_id",
+            "criterion_id",
+            name="uq_evaluation_scores_evaluation_criterion",
+        ),
+        CheckConstraint("score >= 0", name="ck_evaluation_scores_nonnegative"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     evaluation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("evaluations.id"), nullable=False)

@@ -1,14 +1,13 @@
-from uuid import UUID
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.deps import get_current_active_user
 from app.models.user import User
-from app.models.project import Project, ProjectTechnology
-from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
+from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
 from app.services.project_service import ProjectService
 
 router = APIRouter(prefix="/events/{event_id}/projects", tags=["Projects"])
@@ -34,7 +33,7 @@ async def create_project(
 @router.get("/{project_id}", response_model=ProjectResponse)
 async def get_project(event_id: UUID, project_id: UUID, db: AsyncSession = Depends(get_db)):
     service = ProjectService(db)
-    return await service.get_project(project_id)
+    return await service.get_project(event_id, project_id)
 
 
 @router.put("/{project_id}", response_model=ProjectResponse)
@@ -46,7 +45,7 @@ async def update_project(
     current_user: User = Depends(get_current_active_user),
 ):
     service = ProjectService(db)
-    return await service.update_project(project_id, project_data, current_user.id)
+    return await service.update_project(event_id, project_id, project_data, current_user.id)
 
 
 @router.post("/{project_id}/submit", response_model=ProjectResponse)
@@ -57,4 +56,4 @@ async def submit_project(
     current_user: User = Depends(get_current_active_user),
 ):
     service = ProjectService(db)
-    return await service.submit_project(project_id, current_user.id)
+    return await service.submit_project(event_id, project_id, current_user.id)

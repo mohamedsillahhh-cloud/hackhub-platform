@@ -1,10 +1,18 @@
+import logging
 from typing import List, Optional
 from uuid import UUID
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.notification import Notification, NotificationType, NotificationCategory
+from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import noload
+
+from app.models.notification import Notification, NotificationCategory, NotificationType
+from app.models.user import User
 from app.repositories.notification_repository import NotificationRepository
 from app.utils.email import send_email as send_email_util
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationService:
@@ -31,10 +39,7 @@ class NotificationService:
         )
 
         if notification_type == NotificationType.EMAIL:
-            from app.models.user import User
-            from sqlalchemy import select
-
-            result = await self.db.execute(select(User).where(User.id == user_id))
+            result = await self.db.execute(select(User).options(noload("*")).where(User.id == user_id))
             user = result.scalar_one_or_none()
             if user:
                 html = f"<h2>{title}</h2><p>{message}</p>"
@@ -47,18 +52,19 @@ class NotificationService:
                 try:
                     import httpx
 
-                    text = f"*{title}*\n\n{message}"
+                    text = f"{title}\n\n{message}"
                     async with httpx.AsyncClient() as client:
-                        from app.models.user import User
-                        result = await self.db.execute(select(User).where(User.id == user_id))
+                        result = await self.db.execute(select(User).options(noload("*")).where(User.id == user_id))
                         user = result.scalar_one_or_none()
-                        if user:
-                            await client.post(
+                        if user and user.telegram_chat_id:
+                            response = await client.post(
                                 f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage",
-                                json={"chat_id": user.username, "text": text, "parse_mode": "Markdown"},
+                                json={"chat_id": user.telegram_chat_id, "text": text},
+                                timeout=10,
                             )
+                            response.raise_for_status()
                 except Exception:
-                    pass
+                    logger.exception("Telegram notification delivery failed")
 
         return notification
 
@@ -74,8 +80,11 @@ class NotificationService:
             descending=True,
         )
 
-    async def mark_as_read(self, notification_id: UUID) -> Optional[Notification]:
-        return await self.notif_repo.mark_as_read(notification_id)
+    async def mark_as_read(self, notification_id: UUID, user_id: UUID) -> Notification:
+        notification = await self.notif_repo.mark_as_read(notification_id, user_id)
+        if notification is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+        return notification
 
     async def mark_all_as_read(self, user_id: UUID) -> int:
         return await self.notif_repo.mark_all_as_read(user_id)

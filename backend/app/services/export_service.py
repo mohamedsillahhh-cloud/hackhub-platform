@@ -2,15 +2,16 @@ import csv
 import io
 from typing import List
 from uuid import UUID
+
 from fastapi import HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.event import Event
-from app.models.team import Team, TeamMember
-from app.models.project import Project
 from app.models.evaluation import Evaluation, EvaluationScore
+from app.models.event import Event
+from app.models.project import Project
+from app.models.team import Team, TeamMember
 from app.models.user import User, UserRole
 
 
@@ -23,7 +24,7 @@ class ExportService:
         event = result.scalar_one_or_none()
         if not event:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
-        if user.role not in (UserRole.ADMIN, UserRole.ORGANIZER) and str(event.organizer_id) != str(user.id):
+        if user.role != UserRole.ADMIN and event.organizer_id != user.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         return event
 
@@ -37,29 +38,52 @@ class ExportService:
         )
         rows = result.all()
         headers = ["Name", "Email", "University", "Team", "Role", "Registered At"]
-        data = [[r.User.full_name, r.User.email, r.User.university or "",
-                 r.Team.name, r.TeamMember.role.value, str(r.TeamMember.created_at)] for r in rows]
+        data = [
+            [
+                r.User.full_name,
+                r.User.email,
+                r.User.university or "",
+                r.Team.name,
+                r.TeamMember.role.value,
+                str(r.TeamMember.created_at),
+            ]
+            for r in rows
+        ]
         return self._stream_response(headers, data, fmt, "participants")
 
     async def export_projects(self, event_id: UUID, user: User, fmt: str = "xlsx"):
         await self._check_event_access(event_id, user)
-        result = await self.db.execute(
-            select(Project).where(Project.event_id == event_id)
-        )
+        result = await self.db.execute(select(Project).where(Project.event_id == event_id))
         projects = result.scalars().all()
-        headers = ["Name", "Description", "Team ID", "Tech Stack", "Status", "Submitted At"]
-        data = [[p.name, p.description or "", str(p.team_id),
-                 ", ".join(p.tech_stack) if p.tech_stack else "", p.status.value,
-                 str(p.submitted_at or "")] for p in projects]
+        headers = [
+            "Name",
+            "Description",
+            "Team ID",
+            "Tech Stack",
+            "Status",
+            "Submitted At",
+        ]
+        data = [
+            [
+                p.name,
+                p.description or "",
+                str(p.team_id),
+                ", ".join(p.tech_stack) if p.tech_stack else "",
+                p.status.value,
+                str(p.submitted_at or ""),
+            ]
+            for p in projects
+        ]
         return self._stream_response(headers, data, fmt, "projects")
 
     async def export_ranking(self, event_id: UUID, user: User, fmt: str = "xlsx"):
         await self._check_event_access(event_id, user)
         from app.services.ranking_service import RankingService
+
         svc = RankingService(self.db)
-        entries = await svc.get_ranking(event_id)
+        entries = await svc.calculate_ranking(event_id)
         headers = ["Position", "Team", "Project", "Total Score"]
-        data = [[e["position"], e.get("team_name", ""), e.get("project_name", ""), e.get("total_score", 0)] for e in entries]
+        data = [[entry.position, entry.team_name, entry.project_name, entry.total_score] for entry in entries]
         return self._stream_response(headers, data, fmt, "ranking")
 
     async def export_evaluations(self, event_id: UUID, user: User, fmt: str = "xlsx"):
@@ -67,15 +91,30 @@ class ExportService:
         result = await self.db.execute(
             select(Evaluation, EvaluationScore)
             .join(EvaluationScore, Evaluation.id == EvaluationScore.evaluation_id)
-            .where(Evaluation.project_id.in_(
-                select(Project.id).where(Project.event_id == event_id)
-            ))
+            .where(Evaluation.project_id.in_(select(Project.id).where(Project.event_id == event_id)))
         )
         rows = result.all()
-        headers = ["Evaluation ID", "Project ID", "Judge ID", "Criterion ID", "Score", "Comment", "Submitted At"]
-        data = [[str(r.Evaluation.id), str(r.Evaluation.project_id), str(r.Evaluation.judge_id),
-                 str(r.EvaluationScore.criterion_id), r.EvaluationScore.score,
-                 r.Evaluation.comment or "", str(r.Evaluation.submitted_at)] for r in rows]
+        headers = [
+            "Evaluation ID",
+            "Project ID",
+            "Judge ID",
+            "Criterion ID",
+            "Score",
+            "Comment",
+            "Submitted At",
+        ]
+        data = [
+            [
+                str(r.Evaluation.id),
+                str(r.Evaluation.project_id),
+                str(r.Evaluation.judge_id),
+                str(r.EvaluationScore.criterion_id),
+                r.EvaluationScore.score,
+                r.Evaluation.comment or "",
+                str(r.Evaluation.submitted_at),
+            ]
+            for r in rows
+        ]
         return self._stream_response(headers, data, fmt, "evaluations")
 
     def _stream_response(self, headers: List[str], data: List[List], fmt: str, filename: str):
@@ -93,6 +132,7 @@ class ExportService:
         else:
             try:
                 from openpyxl import Workbook
+
                 wb = Workbook()
                 ws = wb.active
                 ws.title = filename
@@ -108,4 +148,7 @@ class ExportService:
                     headers={"Content-Disposition": f"attachment; filename={filename}.xlsx"},
                 )
             except Exception:
-                raise HTTPException(status_code=500, detail="Excel export failed. Install openpyxl: pip install openpyxl")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Excel export failed. Install openpyxl: pip install openpyxl",
+                )

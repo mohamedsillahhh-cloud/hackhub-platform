@@ -1,18 +1,18 @@
 from uuid import UUID
-from typing import List
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_active_user
 from app.models.user import User
-from app.schemas.notification import NotificationResponse
+from app.schemas.notification import NotificationListResponse, NotificationResponse
 from app.services.notification_service import NotificationService
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 
-@router.get("/", response_model=List[NotificationResponse])
+@router.get("/", response_model=NotificationListResponse)
 async def list_notifications(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
@@ -20,10 +20,8 @@ async def list_notifications(
     current_user: User = Depends(get_current_active_user),
 ):
     service = NotificationService(db)
-    items, total = await service.get_all_notifications(
-        current_user.id, skip=(page - 1) * size, limit=size
-    )
-    return items
+    items, total = await service.get_all_notifications(current_user.id, skip=(page - 1) * size, limit=size)
+    return NotificationListResponse(items=items, total=total, page=page, size=size)
 
 
 @router.put("/{notification_id}/read", response_model=NotificationResponse)
@@ -33,7 +31,7 @@ async def mark_as_read(
     current_user: User = Depends(get_current_active_user),
 ):
     service = NotificationService(db)
-    notification = await service.mark_as_read(notification_id)
+    notification = await service.mark_as_read(notification_id, current_user.id)
     return notification
 
 

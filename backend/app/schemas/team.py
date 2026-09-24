@@ -1,6 +1,8 @@
 from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from typing import List, Optional
+from uuid import UUID
+
+from pydantic import AliasPath, BaseModel, Field
 
 
 class TeamCreate(BaseModel):
@@ -9,37 +11,44 @@ class TeamCreate(BaseModel):
 
 
 class TeamInvite(BaseModel):
-    user_id: str
+    user_id: UUID
 
 
 class TeamJoin(BaseModel):
     invitation_code: str
 
 
+class TeamLeadershipTransfer(BaseModel):
+    new_leader_id: UUID
+
+
 class TeamMemberResponse(BaseModel):
-    id: str
-    team_id: str
-    user_id: str
+    id: UUID
+    team_id: UUID
+    user_id: UUID
     role: str
     status: str
-    invited_by: Optional[str] = None
+    invited_by: Optional[UUID] = None
     created_at: datetime
-    username: Optional[str] = None
-    full_name: Optional[str] = None
-    avatar_url: Optional[str] = None
+    username: Optional[str] = Field(None, validation_alias=AliasPath("user", "username"))
+    full_name: Optional[str] = Field(None, validation_alias=AliasPath("user", "full_name"))
+    avatar_url: Optional[str] = Field(None, validation_alias=AliasPath("user", "avatar_url"))
 
     model_config = {"from_attributes": True}
 
 
 class TeamResponse(BaseModel):
-    id: str
+    id: UUID
     name: str
     description: Optional[str] = None
-    event_id: str
-    leader_id: str
-    invitation_code: str
+    event_id: UUID
+    leader_id: UUID
     created_at: datetime
     updated_at: datetime
     members: List[TeamMemberResponse] = []
 
     model_config = {"from_attributes": True}
+
+
+class TeamPrivateResponse(TeamResponse):
+    invitation_code: str

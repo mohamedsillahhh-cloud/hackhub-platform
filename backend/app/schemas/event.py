@@ -1,6 +1,8 @@
 from datetime import datetime
-from typing import Optional, Any, List
-from pydantic import BaseModel, Field
+from typing import Any, List, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, Field, model_validator
 
 
 class EventCreate(BaseModel):
@@ -16,8 +18,16 @@ class EventCreate(BaseModel):
     sponsors: Optional[Any] = None
     prizes: Optional[Any] = None
     faq: Optional[Any] = None
-    max_team_size: int = 5
-    min_team_size: int = 1
+    max_team_size: int = Field(5, ge=1)
+    min_team_size: int = Field(1, ge=1)
+
+    @model_validator(mode="after")
+    def validate_event_bounds(self):
+        if self.end_date <= self.start_date:
+            raise ValueError("end_date must be after start_date")
+        if self.min_team_size > self.max_team_size:
+            raise ValueError("min_team_size cannot exceed max_team_size")
+        return self
 
 
 class EventUpdate(BaseModel):
@@ -33,12 +43,12 @@ class EventUpdate(BaseModel):
     sponsors: Optional[Any] = None
     prizes: Optional[Any] = None
     faq: Optional[Any] = None
-    max_team_size: Optional[int] = None
-    min_team_size: Optional[int] = None
+    max_team_size: Optional[int] = Field(None, ge=1)
+    min_team_size: Optional[int] = Field(None, ge=1)
 
 
 class EventResponse(BaseModel):
-    id: str
+    id: UUID
     title: str
     description: Optional[str] = None
     cover_image: Optional[str] = None
@@ -54,7 +64,7 @@ class EventResponse(BaseModel):
     faq: Optional[Any] = None
     max_team_size: int
     min_team_size: int
-    organizer_id: str
+    organizer_id: UUID
     created_at: datetime
     updated_at: datetime
 

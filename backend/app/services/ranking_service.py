@@ -1,7 +1,9 @@
 import json
 from typing import List
 from uuid import UUID
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
 
 try:
@@ -22,7 +24,13 @@ class RankingService:
     async def _get_redis(self):
         if self._redis is None and aioredis and settings.REDIS_URL:
             try:
-                self._redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+                self._redis = aioredis.from_url(
+                    settings.REDIS_URL,
+                    decode_responses=True,
+                    socket_connect_timeout=settings.REDIS_TIMEOUT_SECONDS,
+                    socket_timeout=settings.REDIS_TIMEOUT_SECONDS,
+                    retry_on_timeout=False,
+                )
             except Exception:
                 self._redis = None
         return self._redis
@@ -32,10 +40,14 @@ class RankingService:
         cache_key = f"ranking:{event_id}"
 
         if redis_client:
-            cached = await redis_client.get(cache_key)
-            if cached:
-                data = json.loads(cached)
-                return [RankResponse(**item) for item in data]
+            try:
+                cached = await redis_client.get(cache_key)
+                if cached:
+                    data = json.loads(cached)
+                    return [RankResponse(**item) for item in data]
+            except Exception:
+                self._redis = None
+                redis_client = None
 
         rows = await self.eval_repo.get_ranking_data(event_id)
         rankings = []
@@ -53,11 +65,17 @@ class RankingService:
             )
 
         if redis_client:
-            await redis_client.setex(cache_key, 300, json.dumps([r.model_dump() for r in rankings]))
+            try:
+                await redis_client.setex(cache_key, 300, json.dumps([r.model_dump() for r in rankings]))
+            except Exception:
+                self._redis = None
 
         return rankings
 
     async def invalidate_cache(self, event_id: UUID) -> None:
         redis_client = await self._get_redis()
         if redis_client:
-            await redis_client.delete(f"ranking:{event_id}")
+            try:
+                await redis_client.delete(f"ranking:{event_id}")
+            except Exception:
+                self._redis = None

@@ -1,10 +1,11 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from uuid import UUID
-from sqlalchemy import select, func
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.models.team import Team, TeamMember
+from app.models.team import InviteStatus, Team, TeamMember
 from app.repositories.base import BaseRepository
 
 
@@ -31,16 +32,17 @@ class TeamRepository(BaseRepository[Team]):
         result = await self.db.execute(
             select(Team)
             .join(TeamMember)
-            .where(TeamMember.user_id == user_id)
+            .where(
+                TeamMember.user_id == user_id,
+                TeamMember.status == InviteStatus.ACCEPTED,
+            )
             .options(joinedload(Team.members))
             .order_by(Team.created_at.desc())
         )
         return list(result.unique().scalars().all())
 
     async def get_team_with_members(self, team_id: UUID) -> Optional[Team]:
-        result = await self.db.execute(
-            select(Team).where(Team.id == team_id).options(joinedload(Team.members))
-        )
+        result = await self.db.execute(select(Team).where(Team.id == team_id).options(joinedload(Team.members)))
         return result.unique().scalar_one_or_none()
 
     async def get_member(self, team_id: UUID, user_id: UUID) -> Optional[TeamMember]:
@@ -59,9 +61,7 @@ class TeamRepository(BaseRepository[Team]):
         return member
 
     async def remove_member(self, member_id: UUID) -> bool:
-        result = await self.db.execute(
-            select(TeamMember).where(TeamMember.id == member_id)
-        )
+        result = await self.db.execute(select(TeamMember).where(TeamMember.id == member_id))
         member = result.scalar_one_or_none()
         if not member:
             return False
@@ -70,9 +70,7 @@ class TeamRepository(BaseRepository[Team]):
         return True
 
     async def get_team_members(self, team_id: UUID) -> List[TeamMember]:
-        result = await self.db.execute(
-            select(TeamMember).where(TeamMember.team_id == team_id)
-        )
+        result = await self.db.execute(select(TeamMember).where(TeamMember.team_id == team_id))
         return list(result.scalars().all())
 
     async def get_members_count(self, team_id: UUID) -> int:

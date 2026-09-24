@@ -27,7 +27,7 @@ async def test_register_duplicate_email(client: AsyncClient):
         json={
             "email": "dupe@example.com",
             "username": "user1",
-            "password": "pass123",
+            "password": "pass1234",
         },
     )
     response = await client.post(
@@ -35,7 +35,7 @@ async def test_register_duplicate_email(client: AsyncClient):
         json={
             "email": "dupe@example.com",
             "username": "user2",
-            "password": "pass123",
+            "password": "pass1234",
         },
     )
     assert response.status_code == 409
@@ -59,10 +59,9 @@ async def test_login(client: AsyncClient):
         },
     )
     assert response.status_code == 200
-    data = response.json()
-    assert "access_token" in data
-    assert "refresh_token" in data
-    assert data["token_type"] == "bearer"
+    assert response.json() == {"message": "Login successful"}
+    assert response.cookies.get("access_token")
+    assert response.cookies.get("refresh_token")
 
 
 @pytest.mark.asyncio
@@ -91,15 +90,11 @@ async def test_refresh_token(client: AsyncClient):
         "/api/v1/auth/login",
         json={"email": "refresh@example.com", "password": "refreshpass"},
     )
-    tokens = login_resp.json()
-
-    response = await client.post(
-        "/api/v1/auth/refresh",
-        json={"refresh_token": tokens["refresh_token"]},
-    )
+    assert login_resp.status_code == 200
+    response = await client.post("/api/v1/auth/refresh")
     assert response.status_code == 200
-    new_data = response.json()
-    assert "access_token" in new_data
+    assert response.json() == {"message": "Token refreshed"}
+    assert response.cookies.get("access_token")
 
 
 @pytest.mark.asyncio

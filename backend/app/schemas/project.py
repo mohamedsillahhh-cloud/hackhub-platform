@@ -1,10 +1,12 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import List, Optional
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 
 class ProjectCreate(BaseModel):
-    challenge_id: Optional[str] = None
+    challenge_id: Optional[UUID] = None
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     github_url: Optional[str] = None
@@ -20,14 +22,14 @@ class ProjectUpdate(BaseModel):
     demo_video_url: Optional[str] = None
     presentation_url: Optional[str] = None
     tech_stack: Optional[List[str]] = None
-    challenge_id: Optional[str] = None
+    challenge_id: Optional[UUID] = None
 
 
 class ProjectResponse(BaseModel):
-    id: str
-    team_id: str
-    event_id: str
-    challenge_id: Optional[str] = None
+    id: UUID
+    team_id: UUID
+    event_id: UUID
+    challenge_id: Optional[UUID] = None
     name: str
     description: Optional[str] = None
     github_url: Optional[str] = None

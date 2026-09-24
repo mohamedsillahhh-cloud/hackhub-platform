@@ -1,8 +1,9 @@
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 from uuid import UUID
-from sqlalchemy import select, func, delete as sa_delete
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import Select
+from sqlalchemy.orm import noload
 
 from app.core.database import Base
 
@@ -15,7 +16,7 @@ class BaseRepository(Generic[ModelType]):
         self.db = db
 
     async def get(self, id: UUID) -> Optional[ModelType]:
-        result = await self.db.execute(select(self.model).where(self.model.id == id))
+        result = await self.db.execute(select(self.model).options(noload("*")).where(self.model.id == id))
         return result.scalar_one_or_none()
 
     async def get_multi(
@@ -27,7 +28,7 @@ class BaseRepository(Generic[ModelType]):
         order_by: Optional[str] = None,
         descending: bool = False,
     ) -> tuple[List[ModelType], int]:
-        query = select(self.model)
+        query = select(self.model).options(noload("*"))
         count_query = select(func.count(self.model.id))
 
         if filters:
@@ -69,7 +70,7 @@ class BaseRepository(Generic[ModelType]):
         if obj is None:
             return None
         for key, value in kwargs.items():
-            if value is not None and hasattr(obj, key):
+            if hasattr(obj, key):
                 setattr(obj, key, value)
         await self.db.flush()
         await self.db.refresh(obj)

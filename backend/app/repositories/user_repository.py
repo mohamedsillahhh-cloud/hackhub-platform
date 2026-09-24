@@ -1,7 +1,9 @@
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
-from sqlalchemy import select, or_, func, cast, String
+
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import noload
 
 from app.models.user import User, UserRole
 from app.repositories.base import BaseRepository
@@ -11,16 +13,20 @@ class UserRepository(BaseRepository[User]):
     def __init__(self, db: AsyncSession):
         super().__init__(User, db)
 
+    async def get(self, id: UUID) -> Optional[User]:
+        result = await self.db.execute(select(User).options(noload("*")).where(User.id == id))
+        return result.scalar_one_or_none()
+
     async def get_by_email(self, email: str) -> Optional[User]:
-        result = await self.db.execute(select(User).where(User.email == email))
+        result = await self.db.execute(select(User).options(noload("*")).where(User.email == email))
         return result.scalar_one_or_none()
 
     async def get_by_username(self, username: str) -> Optional[User]:
-        result = await self.db.execute(select(User).where(User.username == username))
+        result = await self.db.execute(select(User).options(noload("*")).where(User.username == username))
         return result.scalar_one_or_none()
 
     async def get_by_role(self, role: UserRole) -> List[User]:
-        result = await self.db.execute(select(User).where(User.role == role))
+        result = await self.db.execute(select(User).options(noload("*")).where(User.role == role))
         return list(result.scalars().all())
 
     async def search_by_skills(
@@ -31,8 +37,8 @@ class UserRepository(BaseRepository[User]):
     ) -> Tuple[List[User], int]:
         filters = []
         for skill in skills:
-            filters.append(User.skills.any(skill))
-        query = select(User).where(or_(*filters))
+            filters.append(cast(User.skills, String).like(f'%"{skill}"%'))
+        query = select(User).options(noload("*")).where(or_(*filters))
         count_query = select(func.count(User.id)).where(or_(*filters))
 
         count_result = await self.db.execute(count_query)
@@ -45,7 +51,7 @@ class UserRepository(BaseRepository[User]):
     async def get_dashboard_stats(self) -> Dict[str, Any]:
         total_users = await self.db.execute(select(func.count(User.id)))
         active_participants = await self.db.execute(
-            select(func.count(User.id)).where(User.role == UserRole.PARTICIPANT, User.is_active == True)
+            select(func.count(User.id)).where(User.role == UserRole.PARTICIPANT, User.is_active.is_(True))
         )
         universities = await self.db.execute(
             select(func.count(func.distinct(User.university))).where(User.university.isnot(None))
@@ -71,7 +77,7 @@ class UserRepository(BaseRepository[User]):
         country: Optional[str] = None,
         search: Optional[str] = None,
     ) -> Tuple[List[User], int]:
-        query = select(User)
+        query = select(User).options(noload("*"))
         count_query = select(func.count(User.id))
 
         if role:
@@ -92,7 +98,7 @@ class UserRepository(BaseRepository[User]):
             query = query.where(search_filter)
             count_query = count_query.where(search_filter)
         if skills:
-            skill_filters = [User.skills.any(s) for s in skills]
+            skill_filters = [cast(User.skills, String).like(f'%"{skill}"%') for skill in skills]
             query = query.where(or_(*skill_filters))
             count_query = count_query.where(or_(*skill_filters))
 

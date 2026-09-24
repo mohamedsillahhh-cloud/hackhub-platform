@@ -1,8 +1,9 @@
+from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 from uuid import UUID
-from sqlalchemy import select, func, and_
+
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
 
 from app.models.event import Event, EventStatus
 from app.repositories.base import BaseRepository
@@ -19,13 +20,11 @@ class EventRepository(BaseRepository[Event]):
         return list(result.scalars().all())
 
     async def get_by_status(self, status: EventStatus) -> List[Event]:
-        result = await self.db.execute(
-            select(Event).where(Event.status == status).order_by(Event.start_date.asc())
-        )
+        result = await self.db.execute(select(Event).where(Event.status == status).order_by(Event.start_date.asc()))
         return list(result.scalars().all())
 
     async def get_upcoming(self, limit: int = 10) -> List[Event]:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         result = await self.db.execute(
             select(Event)
             .where(Event.start_date > now, Event.status == EventStatus.PUBLISHED)
@@ -35,7 +34,7 @@ class EventRepository(BaseRepository[Event]):
         return list(result.scalars().all())
 
     async def get_active(self) -> List[Event]:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         result = await self.db.execute(
             select(Event)
             .where(
@@ -57,6 +56,7 @@ class EventRepository(BaseRepository[Event]):
         search: Optional[str] = None,
         start_date_from: Optional[datetime] = None,
         start_date_to: Optional[datetime] = None,
+        organizer_id: Optional[UUID] = None,
     ) -> Tuple[List[Event], int]:
         query = select(Event)
         count_query = select(func.count(Event.id))
@@ -74,6 +74,9 @@ class EventRepository(BaseRepository[Event]):
         if start_date_to:
             query = query.where(Event.start_date <= start_date_to)
             count_query = count_query.where(Event.start_date <= start_date_to)
+        if organizer_id:
+            query = query.where(Event.organizer_id == organizer_id)
+            count_query = count_query.where(Event.organizer_id == organizer_id)
 
         count_result = await self.db.execute(count_query)
         total = count_result.scalar() or 0

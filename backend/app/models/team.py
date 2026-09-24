@@ -1,10 +1,12 @@
 import enum
 import uuid
 from datetime import datetime
-from sqlalchemy import String, DateTime, Enum, ForeignKey, func
-from app.core.types import UUID
+
+from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
+from app.core.types import UUID
 
 
 class MemberRole(str, enum.Enum):
@@ -20,6 +22,7 @@ class InviteStatus(str, enum.Enum):
 
 class Team(Base):
     __tablename__ = "teams"
+    __table_args__ = (UniqueConstraint("event_id", "name", name="uq_teams_event_name"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -28,14 +31,25 @@ class Team(Base):
     leader_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     invitation_code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
-    members = relationship("TeamMember", back_populates="team", lazy="selectin", cascade="all, delete-orphan")
+    members = relationship(
+        "TeamMember",
+        back_populates="team",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
     event = relationship("Event", back_populates="teams", lazy="selectin")
 
 
 class TeamMember(Base):
     __tablename__ = "team_members"
+    __table_args__ = (UniqueConstraint("team_id", "user_id", name="uq_team_members_team_user"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     team_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=False)
